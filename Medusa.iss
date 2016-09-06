@@ -1,12 +1,12 @@
 #include <.\idp\idp.iss>
 
-#define SickRageInstallerVersion "v0.5"
+#define MedusaInstallerVersion "v0.1"
 
 #define AppId "{{B0D7EA3E-CC34-4BE6-95D5-3C3D31E9E1B2}"
-#define AppName "SickRage"
+#define AppName "Medusa"
 #define AppVersion "master"
-#define AppPublisher "SickRage"
-#define AppURL "http://sickrage.github.io/"
+#define AppPublisher "Medusa"
+#define AppURL "https://pymedusa.com/"
 #define AppServiceName AppName
 #define AppServiceDescription "Automatic Video Library Manager for TV Shows"
 #define ServiceStartIcon "{group}\Start " + AppName + " Service"
@@ -14,9 +14,9 @@
 
 #define DefaultPort 8081
 
-#define InstallerVersion 10003
-#define InstallerSeedUrl "https://raw.github.com/VinceVal/SickRageInstaller/master/seed.ini"
-#define AppRepoUrl "https://github.com/SickRage/SickRage.git"
+#define InstallerVersion 10001
+#define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
+#define AppRepoUrl "https://github.com/pymedusa/SickRage.git"
 
 [Setup]
 AppId={#AppId}
@@ -33,12 +33,11 @@ AllowNoIcons=yes
 ArchitecturesInstallIn64BitMode=x64
 OutputBaseFilename={#AppName}Installer
 SolidCompression=yes
-UninstallDisplayIcon={app}\Installer\sickrage.ico
+UninstallDisplayIcon={app}\Installer\medusa.ico
 UninstallFilesDir={app}\Installer
 ExtraDiskSpaceRequired=524288000
-SetupIconFile=assets\sickrage.ico
+SetupIconFile=assets\medusa.ico
 WizardImageFile=assets\Wizard.bmp
-WizardImageBackColor=$666666
 WizardSmallImageFile=assets\WizardSmall.bmp
 
 [Tasks]
@@ -46,7 +45,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "utils\unzip.exe"; Flags: dontcopy
-Source: "assets\sickrage.ico"; DestDir: "{app}\Installer"
+Source: "assets\medusa.ico"; DestDir: "{app}\Installer"
 Source: "assets\github.ico"; DestDir: "{app}\Installer"
 Source: "utils\nssm32.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Check: not Is64BitInstallMode
 Source: "utils\nssm64.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Check: Is64BitInstallMode
@@ -55,18 +54,18 @@ Source: "utils\nssm64.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Ch
 Name: "{app}\Data"
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\sickrage.ico"
-Name: "{commondesktop}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\sickrage.ico"; Tasks: desktopicon
-Name: "{group}\{cm:ProgramOnTheWeb,{#AppName}}"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\sickrage.ico"; Flags: excludefromshowinnewinstall
+Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"
+Name: "{commondesktop}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"; Tasks: desktopicon
+Name: "{group}\{cm:ProgramOnTheWeb,{#AppName}}"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\medusa.ico"; Flags: excludefromshowinnewinstall
 Name: "{group}\{#AppName} on GitHub"; Filename: "{#AppRepoUrl}"; IconFilename: "{app}\Installer\github.ico"; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStartIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStopIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "stop ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
 Name: "{group}\Edit {#AppName} Service"; Filename: "{app}\Installer\nssm.exe"; Parameters: "edit ""{#AppServiceName}"""; AfterInstall: ModifyServiceLinks; Flags: excludefromshowinnewinstall
 
 [Run]
-;SickRage
+;Medusa
 Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} {app}\{#AppName}"; StatusMsg: "Installing {#AppName}..."
-;Filename: "xcopy.exe"; Parameters: """C:\SRinstaller\SickRage"" ""{app}\{#AppName}"" /E /I /H /Y"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
+;Filename: "xcopy.exe"; Parameters: """C:\MedusaInstaller\Medusa"" ""{app}\{#AppName}"" /E /I /H /Y"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: runhidden; BeforeInstall: CreateService; StatusMsg: "Starting {#AppName} service..."
 ;Open
@@ -83,8 +82,8 @@ Type: dirifempty; Name: "{app}"
 
 [Messages]
 WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.%n%nNOTE: This installer intentionally ignores any existing installations of Git or Python you might already have installed on your system. If you would prefer to use those versions, we recommend installing [name] manually.
-AboutSetupNote=SickRageInstaller {#SickRageInstallerVersion}
-BeveledLabel=SickRageInstaller {#SickRageInstallerVersion}
+AboutSetupNote=MedusaInstaller {#MedusaInstallerVersion}
+BeveledLabel=MedusaInstaller {#MedusaInstallerVersion}
 
 [Code]
 type
