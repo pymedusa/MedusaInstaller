@@ -2,7 +2,7 @@
 
 #define MedusaInstallerVersion "v0.1"
 
-#define AppId "{{B0D7EA3E-CC34-4BE6-95D5-3C3D31E9E1B2}"
+#define AppId "{{991BED37-186A-5451-9E77-C3DCE91D56C7}"
 #define AppName "Medusa"
 #define AppVersion "master"
 #define AppPublisher "Medusa"
