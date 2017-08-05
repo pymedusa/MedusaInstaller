@@ -44,7 +44,6 @@ WizardSmallImageFile=assets\WizardSmall.bmp
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "utils\unzip.exe"; Flags: dontcopy
 Source: "assets\medusa.ico"; DestDir: "{app}\Installer"
 Source: "assets\github.ico"; DestDir: "{app}\Installer"
 Source: "utils\nssm32.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Check: not Is64BitInstallMode
