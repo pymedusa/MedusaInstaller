@@ -1,6 +1,6 @@
 #include <.\idp\idp.iss>
 
-#define MedusaInstallerVersion "v0.2"
+#define MedusaInstallerVersion "v0.3"
 
 #define AppId "{{991BED37-186A-5451-9E77-C3DCE91D56C7}"
 #define AppName "Medusa"
@@ -14,9 +14,9 @@
 
 #define DefaultPort 8081
 
-#define InstallerVersion 10002
+#define InstallerVersion 10003
 #define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
-#define AppRepoUrl "https://github.com/pymedusa/SickRage.git"
+#define AppRepoUrl "https://github.com/pymedusa/Medusa.git"
 
 [Setup]
 AppId={#AppId}
@@ -30,6 +30,9 @@ AppUpdatesURL={#AppURL}
 DefaultDirName={sd}\{#AppName}
 DefaultGroupName={#AppName}
 AllowNoIcons=yes
+DisableWelcomePage=no
+DisableDirPage=no
+DisableProgramGroupPage=no
 ArchitecturesInstallIn64BitMode=x64
 OutputBaseFilename={#AppName}Installer
 SolidCompression=yes
@@ -44,7 +47,6 @@ WizardSmallImageFile=assets\WizardSmall.bmp
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "utils\unzip.exe"; Flags: dontcopy
 Source: "assets\medusa.ico"; DestDir: "{app}\Installer"
 Source: "assets\github.ico"; DestDir: "{app}\Installer"
 Source: "utils\nssm32.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Check: not Is64BitInstallMode
@@ -64,7 +66,7 @@ Name: "{group}\Edit {#AppName} Service"; Filename: "{app}\Installer\nssm.exe"; P
 
 [Run]
 ;Medusa
-Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} {app}\{#AppName}"; StatusMsg: "Installing {#AppName}..."
+Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."
 ;Filename: "xcopy.exe"; Parameters: """C:\MedusaInstaller\Medusa"" ""{app}\{#AppName}"" /E /I /H /Y"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: runhidden; BeforeInstall: CreateService; StatusMsg: "Starting {#AppName} service..."
@@ -72,6 +74,7 @@ Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}""";
 Filename: "http://localhost:{code:GetWebPort}/"; Flags: postinstall shellexec; Description: "Open {#AppName} in browser"
 
 [UninstallRun]
+;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "remove ""{#AppServiceName}"" confirm"; Flags: runhidden
 
 [UninstallDelete]
@@ -295,7 +298,7 @@ begin
     SeedDownloadPageId := idpCreateDownloadForm(wpWelcome)
     DownloadPage := PageFromID(SeedDownloadPageId)
     DownloadPage.Caption := 'Downloading Installer Configuration'
-    DownloadPage.Description := 'Setup is downloading it''s configuration file...'
+    DownloadPage.Description := 'Setup is downloading its configuration file...'
 
     idpConnectControls()
   end;
@@ -329,8 +332,10 @@ var
   Nssm: String;
   ResultCode: Integer;
   OldProgressString: String;
+  WindowsVersion: TWindowsVersion;
 begin
   Nssm := ExpandConstant('{app}\Installer\nssm.exe')
+  GetWindowsVersionEx(WindowsVersion);
 
   OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
@@ -341,6 +346,10 @@ begin
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodConsole 20000'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH={app}\Git\cmd;%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+
+  if WindowsVersion.NTPlatform and (WindowsVersion.Major = 10) and (WindowsVersion.Minor = 0) and (WindowsVersion.Build > 14393) then begin
+    Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppNoConsole 1'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  end;
 
   WizardForm.StatusLabel.Caption := OldProgressString;
 end;
