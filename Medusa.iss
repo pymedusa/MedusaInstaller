@@ -16,7 +16,7 @@
 
 #define InstallerVersion 10002
 #define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
-#define AppRepoUrl "https://github.com/pymedusa/SickRage.git"
+#define AppRepoUrl "https://github.com/pymedusa/Medusa.git"
 
 [Setup]
 AppId={#AppId}
@@ -71,6 +71,7 @@ Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}""";
 Filename: "http://localhost:{code:GetWebPort}/"; Flags: postinstall shellexec; Description: "Open {#AppName} in browser"
 
 [UninstallRun]
+;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "remove ""{#AppServiceName}"" confirm"; Flags: runhidden
 
 [UninstallDelete]
@@ -294,7 +295,7 @@ begin
     SeedDownloadPageId := idpCreateDownloadForm(wpWelcome)
     DownloadPage := PageFromID(SeedDownloadPageId)
     DownloadPage.Caption := 'Downloading Installer Configuration'
-    DownloadPage.Description := 'Setup is downloading it''s configuration file...'
+    DownloadPage.Description := 'Setup is downloading its configuration file...'
 
     idpConnectControls()
   end;
