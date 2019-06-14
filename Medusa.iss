@@ -77,10 +77,12 @@ Filename: "http://localhost:{code:GetWebPort}/"; Flags: postinstall shellexec; D
 [UninstallRun]
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "remove ""{#AppServiceName}"" confirm"; Flags: runhidden
+Filename: "{app}\Installer\python-setup.exe"; Parameters: "/quiet /uninstall"; Flags: runhidden
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\Python"
 Type: filesandordirs; Name: "{app}\Git"
+Type: filesandordirs; Name: "{app}\Installer"
 Type: filesandordirs; Name: "{app}\{#AppName}"
 Type: dirifempty; Name: "{app}"
 
@@ -341,7 +343,7 @@ begin
   OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "{app}\Python\python.exe" """{app}\{#AppName}\SickBeard.py""" --nolaunch --port='+GetWebPort('')+' --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "{app}\Python\python.exe" """{app}\{#AppName}\start.py""" --nolaunch --port='+GetWebPort('')+' --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
@@ -398,8 +400,10 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Python...', '')
-  Exec('msiexec.exe', ExpandConstantEx('/A "{tmp}\{filename}" /QN TARGETDIR="{app}\Python"', 'filename', PythonDep.Filename), '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  Exec(ExpandConstantEx('{tmp}\{filename}', 'filename', PythonDep.Filename), ExpandConstant('/quiet DefaultJustForMeTargetDir="{app}\Python" AssociateFiles=0 Shortcuts=0 Include_doc=0 Include_dev=0 Include_launcher=0 InstallLauncherAllUsers=0 Include_test=0'), '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
   CleanPython()
+  CreateDir(ExpandConstant('{app}\Installer'))
+  FileCopy(ExpandConstantEx('{tmp}\{filename}', 'filename', PythonDep.Filename), ExpandConstant('{app}\Installer\python-setup.exe'), False)
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
 
