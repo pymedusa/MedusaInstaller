@@ -214,10 +214,11 @@ end;
 procedure ParseDependency(var Dependency: TDependency; Name, SeedFile: String);
 var
   LocalFile: String;
+  DownloadTarget: String;
 begin
   Dependency.Name     := Name;
   Dependency.URL      := GetIniString(Name, 'url', '', SeedFile)
-  Dependency.Filename := Dependency.URL
+  Dependency.Filename := GetIniString(Name, 'filename', '', SeedFile)
   Dependency.Size     := GetIniInt(Name, 'size', 0, 0, MaxInt, SeedFile)
   Dependency.SHA1     := GetIniString(Name, 'sha1', '', SeedFile)
 
@@ -225,17 +226,23 @@ begin
     AbortInstallation('Error parsing dependency information for ' + Name + '.')
   end;
 
-  while Pos('/', Dependency.Filename) <> 0 do begin
-    Delete(Dependency.Filename, 1, Pos('/', Dependency.Filename))
+  // If a filename was not supplied, use the last part of the URL as the filename
+  if Dependency.Filename = '' then begin
+    Dependency.Filename := Dependency.URL
+    while Pos('/', Dependency.Filename) <> 0 do begin
+      Delete(Dependency.Filename, 1, Pos('/', Dependency.Filename))
+    end;
   end;
 
   if LocalFilesDir <> '' then begin
     LocalFile := LocalFilesDir + '\' + Dependency.Filename
   end;
+
+  DownloadTarget := ExpandConstant('{tmp}\') + Dependency.Filename
   if (LocalFile <> '') and (FileExists(LocalFile)) then begin
-    FileCopy(LocalFile, ExpandConstant('{tmp}\') + Dependency.Filename, True)
+    FileCopy(LocalFile, DownloadTarget, True)
   end else begin
-    idpAddFileSize(Dependency.URL, ExpandConstant('{tmp}\') + Dependency.Filename, Dependency.Size)
+    idpAddFileSize(Dependency.URL, DownloadTarget, Dependency.Size)
   end
 end;
 
