@@ -11,6 +11,7 @@
 #define AppServiceDescription "Automatic Video Library Manager for TV Shows"
 #define ServiceStartIcon "{group}\Start " + AppName + " Service"
 #define ServiceStopIcon "{group}\Stop " + AppName + " Service"
+#define ServiceEditIcon "{group}\Edit " + AppName + " Service"
 
 #define DefaultPort 8081
 
@@ -58,13 +59,14 @@ Source: "utils\nssm64.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Ch
 Name: "{app}\Data"
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"
+;Desktop
 Name: "{commondesktop}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"; Tasks: desktopicon
-Name: "{group}\{cm:ProgramOnTheWeb,{#AppName}}"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\medusa.ico"; Flags: excludefromshowinnewinstall
-Name: "{group}\{#AppName} on GitHub"; Filename: "{#AppRepoUrl}"; IconFilename: "{app}\Installer\github.ico"; Flags: excludefromshowinnewinstall
+;Start menu
+Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"
+Name: "{group}\{#AppName} on GitHub"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\github.ico"; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStartIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStopIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "stop ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
-Name: "{group}\Edit {#AppName} Service"; Filename: "{app}\Installer\nssm.exe"; Parameters: "edit ""{#AppServiceName}"""; AfterInstall: ModifyServiceLinks; Flags: excludefromshowinnewinstall
+Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "edit ""{#AppServiceName}"""; AfterInstall: ModifyServiceLinks; Flags: excludefromshowinnewinstall
 
 [Run]
 ;Medusa
@@ -509,6 +511,7 @@ procedure ModifyServiceLinks();
 begin
   ShellLinkRunAsAdmin(ExpandConstant('{#ServiceStartIcon}.lnk'))
   ShellLinkRunAsAdmin(ExpandConstant('{#ServiceStopIcon}.lnk'))
+  ShellLinkRunAsAdmin(ExpandConstant('{#ServiceEditIcon}.lnk'))
 end;
 
 function InitializeSetup(): Boolean;
