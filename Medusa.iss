@@ -452,8 +452,7 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Git...', '')
-  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\mingit"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec('xcopy.exe', ExpandConstant('"{tmp}\mingit" "{app}\Git" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{app}\Git"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
 
