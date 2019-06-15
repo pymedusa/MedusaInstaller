@@ -409,7 +409,6 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Python...', '')
-  ExtractTemporaryFile('7za.exe')
   Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\nuget-python"', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec('xcopy.exe', ExpandConstant('"{tmp}\nuget-python\tools" "{app}\Python" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   CleanPython()
@@ -421,7 +420,6 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Git...', '')
-  ExtractTemporaryFile('7za.exe')
   Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\mingit"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec('xcopy.exe', ExpandConstant('"{tmp}\mingit" "{app}\Git" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
@@ -460,6 +458,7 @@ begin
     InstallDepPage.Show
     InstallDepPage.SetProgress(0, 6)
     if VerifyDependencies() then begin
+      ExtractTemporaryFile('7za.exe')
       InstallPython()
       InstallGit()
     end else begin
