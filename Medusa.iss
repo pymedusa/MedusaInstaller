@@ -18,6 +18,7 @@
 #define InstallerVersion 10005
 #define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
 #define AppRepoUrl "https://github.com/pymedusa/Medusa.git"
+#define AppSize 246784000
 
 [Setup]
 AppId={#AppId}
@@ -39,11 +40,22 @@ OutputBaseFilename={#AppName}Installer
 SolidCompression=yes
 UninstallDisplayIcon={app}\Installer\medusa.ico
 UninstallFilesDir={app}\Installer
-ExtraDiskSpaceRequired=524288000
 SetupIconFile=assets\medusa.ico
 WizardImageFile=assets\Wizard.bmp
 WizardSmallImageFile=assets\WizardSmall.bmp
 WizardStyle=modern
+
+[Types]
+Name: "full"; Description: "Full installation (master)"
+Name: "full-develop"; Description: "Full installation (develop)"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "branch"; Description: {#AppName}; Types: "full full-develop"
+Name: "branch\master"; Description: "master branch"; ExtraDiskSpaceRequired: {#AppSize}; Types: "full"; Flags: exclusive
+Name: "branch\develop"; Description: "develop branch"; ExtraDiskSpaceRequired: {#AppSize}; Types: "full-develop"; Flags: exclusive
+Name: "git"; Description: "Git v2.22.0"; ExtraDiskSpaceRequired: 55000000; Types: "full full-develop custom"; Flags: fixed
+Name: "python"; Description: "Python v3.7.3"; ExtraDiskSpaceRequired: 36000000; Types: "full full-develop custom"; Flags: fixed
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -70,8 +82,12 @@ Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "e
 
 [Run]
 ;Medusa
-Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."
-;Filename: "xcopy.exe"; Parameters: """C:\MedusaInstaller\Medusa"" ""{app}\{#AppName}"" /E /I /H /Y"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
+;Branch: master
+Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/master
+;Branch: develop
+Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} --branch develop ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/develop
+;Local test
+;Filename: "robocopy.exe"; Parameters: """{param:LOCALREPO}"" ""{app}\{#AppName}"" /E /IS /IT /NFL /NDL /NJH"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: runhidden; BeforeInstall: CreateService; StatusMsg: "Starting {#AppName} service..."
 ;Open
@@ -547,6 +563,10 @@ begin
 
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
+  end else if (CurPageId = wpSelectComponents) and (not WizardIsComponentSelected('branch')) then begin
+    // Make sure the main app component is selected
+    MsgBox(ExpandConstant('You must select a select a version of {#AppName} to install.'), mbError, 0)
+    Result := False;
   end else if CurPageId = OptionsPage.ID then begin
     // Make sure valid port is specified
     Port := StrToIntDef(OptionsPage.Values[0], 0)
@@ -585,6 +605,8 @@ begin
   end;
 end;
 
+// This is no longer needed since we're using components
+{
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
   MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 begin
@@ -599,6 +621,7 @@ begin
     Result := Result + NewLine + NewLine + MemoTasksInfo
   end;
 end;
+}
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
