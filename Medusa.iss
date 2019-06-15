@@ -87,7 +87,7 @@ Type: filesandordirs; Name: "{app}\{#AppName}"
 Type: dirifempty; Name: "{app}"
 
 [Messages]
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.%n%nNOTE: This installer intentionally ignores any existing installations of Git or Python you might already have installed on your system. If you would prefer to use those versions, we recommend installing [name] manually.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.%n%nNOTE: This installer intentionally ignores any existing installations of Git or Python you might already have installed on your system. If you prefer to use those versions, we recommend installing [name] manually.
 AboutSetupNote=MedusaInstaller {#MedusaInstallerVersion}
 BeveledLabel=MedusaInstaller {#MedusaInstallerVersion}
 
@@ -401,8 +401,8 @@ var
 begin
   InstallDepPage.SetText('Installing Python...', '')
   ExtractTemporaryFile('7za.exe')
-  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\nuget-python"', 'filename', PythonDep.Filename), '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
-  FileCopy(ExpandConstant('{tmp}\nuget-python\tools'), ExpandConstant('{app}\Python'), False)
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\nuget-python"', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec('xcopy.exe', ExpandConstant('"{tmp}\nuget-python\tools" "{app}\Python" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   CleanPython()
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
@@ -412,7 +412,9 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Git...', '')
-  Exec(ExpandConstantEx('{tmp}\{filename}', 'filename', GitDep.Filename), ExpandConstant('-InstallPath="{app}\Git" -y -gm2'), '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  ExtractTemporaryFile('7za.exe')
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\mingit"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec('xcopy.exe', ExpandConstant('"{tmp}\mingit" "{app}\Git" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
 
