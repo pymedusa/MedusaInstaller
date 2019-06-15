@@ -4,7 +4,6 @@
 
 #define AppId "{{991BED37-186A-5451-9E77-C3DCE91D56C7}"
 #define AppName "Medusa"
-#define AppVersion "master"
 #define AppPublisher "Medusa"
 #define AppURL "https://github.com/pymedusa/Medusa"
 #define AppServiceName AppName
@@ -23,8 +22,7 @@
 [Setup]
 AppId={#AppId}
 AppName={#AppName}
-AppVersion={#AppVersion}
-AppVerName={#AppName} ({#AppVersion})
+AppVerName={#AppName}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
