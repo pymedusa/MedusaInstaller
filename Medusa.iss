@@ -81,9 +81,9 @@ Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "e
 [Run]
 ;Medusa
 ;Branch: master
-Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/master
+Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/master
 ;Branch: develop
-Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} --branch develop ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/develop
+Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} --branch develop ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/develop
 ;Local test
 ;Filename: "robocopy.exe"; Parameters: """{param:LOCALREPO}"" ""{app}\{#AppName}"" /E /IS /IT /NFL /NDL /NJH"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
 ;Service
@@ -348,6 +348,15 @@ begin
   end;
 end;
 
+function GetGitExecutable(Param: String): String;
+begin
+  if WizardIsComponentSelected('git') then begin
+    Result := ExpandConstant('{app}\Git\cmd\git.exe')
+  end else begin
+    Result := 'git'
+  end;
+end;
+
 function GetWebPort(Param: String): String;
 begin
   Result := OptionsPage.Values[0]
@@ -355,23 +364,32 @@ end;
 
 procedure CreateService();
 var
+  PythonExecutable: String;
   Nssm: String;
   ResultCode: Integer;
   OldProgressString: String;
   WindowsVersion: TWindowsVersion;
 begin
+  if WizardIsComponentSelected('python') then begin
+    PythonExecutable := ExpandConstant('"{app}\Python\python.exe"')
+  end else begin
+    PythonExecutable := '"python"'
+  end;
+
   Nssm := ExpandConstant('{app}\Installer\nssm.exe')
   GetWindowsVersionEx(WindowsVersion);
 
   OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "{app}\Python\python.exe" """{app}\{#AppName}\start.py""" --nolaunch --port='+GetWebPort('')+' --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" '+PythonExecutable+' "{app}\{#AppName}\start.py" --nolaunch --port='+GetWebPort('')+' --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodConsole 20000'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH={app}\Git\cmd;%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  if WizardIsComponentSelected('git') then begin
+    Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH={app}\Git\cmd;%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  end;
 
   if WindowsVersion.NTPlatform and (WindowsVersion.Major = 10) and (WindowsVersion.Minor = 0) and (WindowsVersion.Build > 14393) then begin
     Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppNoConsole 1'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
@@ -467,14 +485,24 @@ begin
 end;
 
 procedure InstallDependencies();
+var
+  PythonSelected: Boolean;
+  GitSelected: Boolean;
 begin
+  PythonSelected := WizardIsComponentSelected('python')
+  GitSelected := WizardIsComponentSelected('git')
+
+  if not (PythonSelected or GitSelected) then begin
+    exit;
+  end;
+
   try
     InstallDepPage.Show
     InstallDepPage.SetProgress(0, 6)
     if VerifyDependencies() then begin
       ExtractTemporaryFile('7za.exe')
-      InstallPython()
-      InstallGit()
+      if PythonSelected then InstallPython();
+      if GitSelected then InstallGit();
     end else begin
       ErrorMessage := 'There was an error installing the required dependencies.'
     end;
