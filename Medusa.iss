@@ -427,12 +427,6 @@ var
   PythonPath: String;
 begin
   PythonPath := ExpandConstant('{app}\Python')
-
-  DelTree(PythonPath + '\*.msi',        False, True, False)
-  DelTree(PythonPath + '\Doc',          True,  True, True)
-  DelTree(PythonPath + '\Lib\test\*.*', False, True, True)
-  DelTree(PythonPath + '\Scripts',      True,  True, True)
-  DelTree(PythonPath + '\tcl',          True,  True, True)
   DelTree(PythonPath + '\Tools',        True,  True, True)
 end;
 
@@ -441,8 +435,8 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Python...', '')
-  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\nuget-python"', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec('xcopy.exe', ExpandConstant('"{tmp}\nuget-python\tools" "{app}\Python" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{app}" tools', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  RenameFile(ExpandConstant('{app}\tools'), ExpandConstant('{app}\Python'))
   CleanPython()
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
