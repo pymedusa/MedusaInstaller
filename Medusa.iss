@@ -44,16 +44,13 @@ WizardSmallImageFile=assets\WizardSmall.bmp
 WizardStyle=modern
 
 [Types]
-Name: "full"; Description: "Full installation (master)"
-Name: "full-develop"; Description: "Full installation (develop)"
+Name: "full"; Description: "Full installation"
 Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
-Name: "branch"; Description: {#AppName}; Types: "full full-develop"
-Name: "branch\master"; Description: "master branch"; ExtraDiskSpaceRequired: {#AppSize}; Types: "full"; Flags: exclusive
-Name: "branch\develop"; Description: "develop branch"; ExtraDiskSpaceRequired: {#AppSize}; Types: "full-develop"; Flags: exclusive
-Name: "git"; Description: "Git v2.22.0"; ExtraDiskSpaceRequired: 55000000; Types: "full full-develop custom"; Flags: fixed
-Name: "python"; Description: "Python v3.7.3"; ExtraDiskSpaceRequired: 36000000; Types: "full full-develop custom"; Flags: fixed
+Name: "application"; Description: {#AppName}; ExtraDiskSpaceRequired: {#AppSize}; Types: "full custom"; Flags: fixed
+Name: "python"; Description: "Python v3.7.3"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"; Flags: fixed
+Name: "git"; Description: "Git v2.22.0"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"; Flags: fixed
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -80,10 +77,7 @@ Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "e
 
 [Run]
 ;Medusa
-;Branch: master
-Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/master
-;Branch: develop
-Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} --branch develop ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."; Components: branch/develop
+Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"" --branch {code:GetBranch}"; StatusMsg: "Installing {#AppName}..."
 ;Local test
 ;Filename: "robocopy.exe"; Parameters: """{param:LOCALREPO}"" ""{app}\{#AppName}"" /E /IS /IT /NFL /NDL /NJH"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
 ;Service
@@ -181,7 +175,9 @@ var
   SeedDownloadPageId, DependencyDownloadPageId: Integer;
   PythonDep, GitDep: TDependency;
   InstallDepPage: TOutputProgressWizardPage;
-  OptionsPage: TInputQueryWizardPage;
+  OptionsPage: TWizardPage;
+  OptionWebPort: TNewEdit;
+  OptionBranch: TNewCheckListBox;
   // Uninstall variables
   UninstallRemoveData: Boolean;
 
@@ -359,7 +355,20 @@ end;
 
 function GetWebPort(Param: String): String;
 begin
-  Result := OptionsPage.Values[0]
+  Result := OptionWebPort.Text
+end;
+
+function GetBranch(Param: String): String;
+var
+  Idx: Integer;
+begin
+  for Idx := 0 to OptionBranch.Items.Count - 1 do
+  begin
+    if OptionBranch.Checked[Idx] then begin
+      Result := OptionBranch.ItemCaption[Idx]
+      break;
+    end;
+  end;
 end;
 
 procedure CreateService();
@@ -505,6 +514,8 @@ begin
 end;
 
 procedure InitializeWizard();
+var
+  WebPortCaption: TNewStaticText;
 begin
   InitializeSeedDownload()
 
@@ -512,9 +523,33 @@ begin
 
   InstallDepPage := CreateOutputProgressPage('Installing Dependencies', ExpandConstant('Setup is installing {#AppName} dependencies...'));
 
-  OptionsPage := CreateInputQueryPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'), '');
-  OptionsPage.Add(ExpandConstant('{#AppName} Web Server Port:'), False)
-  OptionsPage.Values[0] := ExpandConstant('{#DefaultPort}')
+  OptionsPage := CreateCustomPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'));
+
+  WebPortCaption := TNewStaticText.Create(OptionsPage);
+  WebPortCaption.Anchors := [akLeft, akRight];
+  WebPortCaption.Caption := ExpandConstant('{#AppName} Web Server Port:');
+  WebPortCaption.AutoSize := True;
+  WebPortCaption.Parent := OptionsPage.Surface;
+
+  OptionWebPort := TNewEdit.Create(OptionsPage);
+  OptionWebPort.Top := WebPortCaption.Top + WebPortCaption.Height + ScaleY(8);
+  OptionWebPort.Text := ExpandConstant('{#DefaultPort}');
+  OptionWebPort.Parent := OptionsPage.Surface;
+
+  OptionBranch := TNewCheckListBox.Create(OptionsPage);
+  OptionBranch.Top := OptionWebPort.Top + OptionWebPort.Height;
+  OptionBranch.Width := ScaleX(30);
+  OptionBranch.Height := ScaleY(100);
+  OptionBranch.Anchors := [akLeft, akRight];
+  OptionBranch.BorderStyle := bsNone;
+  OptionBranch.ParentColor := True;
+  OptionBranch.MinItemHeight := WizardForm.TasksList.MinItemHeight;
+  OptionBranch.ShowLines := False;
+  OptionBranch.WantTabs := True;
+  OptionBranch.Parent := OptionsPage.Surface;
+  OptionBranch.AddGroup('Branch:', '', 0, nil);
+  OptionBranch.AddRadioButton('master', '(stable)', 0, True, True, nil);
+  OptionBranch.AddRadioButton('develop', '(development)', 0, False, True, nil);
 end;
 
 function ShellLinkRunAsAdmin(LinkFilename: String): Boolean;
@@ -582,13 +617,9 @@ begin
 
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
-  end else if (CurPageId = wpSelectComponents) and (not WizardIsComponentSelected('branch')) then begin
-    // Make sure the main app component is selected
-    MsgBox(ExpandConstant('You must select a select a version of {#AppName} to install.'), mbError, 0)
-    Result := False;
   end else if CurPageId = OptionsPage.ID then begin
     // Make sure valid port is specified
-    Port := StrToIntDef(OptionsPage.Values[0], 0)
+    Port := StrToIntDef(GetWebPort(''), 0)
     if (Port = 0) or (Port < MinPort) or (Port > MaxPort) then begin
       MsgBox(FmtMessage('Please specify a valid port between %1 and %2.', [IntToStr(MinPort), IntToStr(MaxPort)]), mbError, 0)
       Result := False;
@@ -624,23 +655,35 @@ begin
   end;
 end;
 
-// This is no longer needed since we're using components
-{
-function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
-  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+function Append(const Lines, S, NewLine: String): String;
 begin
-  Result := MemoDirInfo + NewLine + NewLine + \
-            MemoGroupInfo + NewLine + NewLine + \
-            'Download and install dependencies:' + NewLine + \
-            Space + 'Git' + NewLine + \
-            Space + 'Python' + NewLine + NewLine + \
-            'Web server port:' + NewLine + Space + GetWebPort('')
-
-  if MemoTasksInfo <> '' then begin
-    Result := Result + NewLine + NewLine + MemoTasksInfo
+  Result := S;
+  if Lines <> '' then begin
+    if Result <> '' then
+      Result := Result + NewLine + NewLine;
+    Result := Result + Lines;
   end;
 end;
-}
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
+  MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+var
+  S: String;
+begin
+  S := '';
+
+  S := Append(MemoDirInfo, S, NewLine);
+  S := Append(MemoGroupInfo, S, NewLine);
+  // S := Append(MemoTypeInfo, S, NewLine);
+  S := Append(MemoComponentsInfo, S, NewLine);
+
+  S := Append('Web server port:' + NewLine + Space + GetWebPort(''), S, NewLine);
+  S := Append('Branch: ' + NewLine + Space + GetBranch(''), S, NewLine);
+
+  S := Append(MemoTasksInfo, S, NewLine);
+
+  Result := S;
+end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
