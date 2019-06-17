@@ -13,6 +13,7 @@ Here are some of the features of MedusaInstaller:
 - Creates Start Menu shortcuts
 - When uninstalling, asks user if they want to delete or keep their database and configuration
 - Allows configuring the web UI port during install
+- Allows configuring the branch during install
 
 The install script is written using the excellent [Inno Setup](http://www.jrsoftware.org/isinfo.php) by Jordan Russell.
 
