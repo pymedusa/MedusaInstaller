@@ -30,16 +30,17 @@ before_build:
         % { $($_.matches.groups[1]).Value };
 
   - ps: |-
-      If ($env:InstallerVersion -ne $env:SeedVersion `
+      If ( `
+        $env.InstallerVersion -ne $env.SeedVersion `
         -and $APPVEYOR_REPO_BRANCH -eq "master" `
-        # -and -not $APPVEYOR_PULL_REQUEST_NUMBER) `
-      { `
+        # -and -not $APPVEYOR_PULL_REQUEST_NUMBER `
+      ) { `
         "`nSeed version differs from version in source code!" + `
-        "`n  Version in source code: $env:InstallerVersion" + `
-        "`n  Version in seed file:   $env:SeedVersion" + `
+        "`n  Version in source code: $env.InstallerVersion" + `
+        "`n  Version in seed file:   $env.SeedVersion" + `
         "`nMake sure to update the value before pushing to master." `
         | Write-Warning `
-      } `
+      }
 
 build_script:
   - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /Q Medusa.iss'
