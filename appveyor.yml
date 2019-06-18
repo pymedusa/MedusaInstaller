@@ -54,16 +54,21 @@ test: off
 
 notifications:
   - provider: GitHubPullRequest
-    template: |-
-      {{#passed}}:white_check_mark:{{/passed}}
-      {{#failed}}:x:{{/failed}}
-      [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}})
-      (commit {{commitUrl}} by @{{&commitAuthorUsername}})
+    template: >-
+      <p>
+        {{#passed}}:white_check_mark:{{/passed}}
+        {{#messages}}:warning:{{/messages}}
+        {{#failed}}:x:{{/failed}}
+        [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}})
+        (commit {{commitUrl}} by @{{&commitAuthorUsername}})
+      </p>
       <p>Build messages:</p>
       <ul>
       {{#jobs}}
         {{#messages}}
-          <li>{{message}}</li>
+          <li>{{message}}<br>
+              {{details}}
+          </li>
         {{/messages}}
       {{/jobs}}
       </ul>
