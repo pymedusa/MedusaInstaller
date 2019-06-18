@@ -20,24 +20,26 @@ install:
 
 before_build:
   - ps: |-
-      $InstallerVersion = Select-String -Path .\Medusa.iss `
+      $env:InstallerVersion = Select-String -Path .\Medusa.iss `
         -Pattern '^#define\sInstallerVersion\s([\d]+)' | `
         % { $($_.matches.groups[1]).Value };
 
-      $SeedVersion = Select-String -Path .\seed.ini `
+  - ps: |-
+      $env:SeedVersion = Select-String -Path .\seed.ini `
         -Pattern '^Version=([\d]+)' | `
         % { $($_.matches.groups[1]).Value };
 
-      If ($InstallerVersion -ne $SeedVersion `
-        -and $APPVEYOR_REPO_BRANCH -ne "master" `
-        -and -not $APPVEYOR_PULL_REQUEST_NUMBER) `
+  - ps: |-
+      If ($env:InstallerVersion -ne $env:SeedVersion `
+        -and $APPVEYOR_REPO_BRANCH -eq "master" `
+        # -and -not $APPVEYOR_PULL_REQUEST_NUMBER) `
       { `
         "`nSeed version differs from version in source code!" + `
-        "`n  Version in source code: $InstallerVersion" + `
-        "`n  Version in seed file:   $SeedVersion" + `
+        "`n  Version in source code: $env:InstallerVersion" + `
+        "`n  Version in seed file:   $env:SeedVersion" + `
         "`nMake sure to update the value before pushing to master." `
         | Write-Warning `
-      }
+      } `
 
 build_script:
   - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /Q Medusa.iss'
@@ -58,8 +60,8 @@ before_deploy:
       { `
         throw `
           "Seed version differs from version in source code!`n" + `
-          "`tVersion in source code: $InstallerVersion`n" + `
-          "`tVersion in seed file:   $SeedVersion" + `
+          "`tVersion in source code: $env:InstallerVersion`n" + `
+          "`tVersion in seed file:   $env:SeedVersion" + `
           "You have to update the value before releasing" `
       }
 
