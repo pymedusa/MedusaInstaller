@@ -51,7 +51,7 @@ artifacts:
 before_deploy:
   - ps: |-
       $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
-        -Pattern '^#define\sMedusaInstallerVersion\s"(v[\d.]+)"' | `
+        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
         % { $($_.matches.groups[1]).Value };
 
       If ($InstallerVersion -ne $SeedVersion) `
@@ -63,13 +63,14 @@ before_deploy:
           "You have to update the value before releasing" `
       }
 
-# deploy:
-#   - provider: GitHub
-#     tag: $(ReleaseVersion)
-#     force_update: true         # replaces current release
-#     draft: true                # release as a draft
-#     auth_token:
-#       secure: <<FIXME>>
-#     artifact: MedusaInstaller.exe
-#     on:
-#       branch: master           # release from master branch only
+deploy:
+  - provider: GitHub
+    tag: $(ReleaseVersion)
+    release: Release $(ReleaseVersion)
+    force_update: true         # replaces current release
+    draft: true                # release as a draft
+    auth_token:
+      secure: epQRjuQ/hfy8BkTBL3NYVnmkFnsVlYEDKX5XB7RcY2Ort3Fo2sXX8LZdW+sNyRa3
+    artifact: MedusaInstaller.exe
+    on:
+      branch: master           # release from master branch only
