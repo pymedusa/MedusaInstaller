@@ -43,7 +43,7 @@ before_build:
         Add-AppveyorMessage `
           -Message "$message" `
           -Category Warning `
-          -Details "$details" `
+          -Details "$details"; `
         Write-Warning "$message`n$details" `
       }
 
@@ -88,7 +88,7 @@ before_deploy:
         Add-AppveyorMessage `
           -Message "$message" `
           -Category Error `
-          -Details "$details" `
+          -Details "$details"; `
         throw "$message`n$details" `
       }
 
