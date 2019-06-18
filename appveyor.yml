@@ -35,17 +35,25 @@ before_build:
         -and $env:APPVEYOR_REPO_BRANCH -eq "master" `
         # -and -not $env:APPVEYOR_PULL_REQUEST_NUMBER `
       ) { `
-        "`nSeed version differs from version in source code!" + `
-        "`n  Version in source code: $env:InstallerVersion" + `
-        "`n  Version in seed file:   $env:SeedVersion" + `
-        "`nMake sure to update the value before pushing to master." `
-        | Write-Warning `
+        $message = `
+          "`nSeed version differs from version in source code!" + `
+          "`n  Version in source code: $env:InstallerVersion" + `
+          "`n  Version in seed file:   $env:SeedVersion" + `
+          "`nMake sure to update the value before pushing to master.";
+        Add-AppveyorMessage `
+          -Message "Seed version differs from version in source code!" `
+          -Category Warning `
+          -Details "$message" `
+        # Write-Warning $message `
       }
 
 build_script:
   - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /Q Medusa.iss'
 
 test: off
+
+notifications:
+  - provider: GitHubPullRequest
 
 artifacts:
   - path: Output\MedusaInstaller.exe
@@ -56,6 +64,7 @@ before_deploy:
       $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
         -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
         % { $($_.matches.groups[1]).Value };
+
   - ps: |-
       If ($env:InstallerVersion -ne $env:SeedVersion) `
       { `
