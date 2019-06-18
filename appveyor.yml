@@ -31,13 +31,13 @@ before_build:
 
   - ps: |-
       If ( `
-        $env.InstallerVersion -ne $env.SeedVersion `
-        -and $APPVEYOR_REPO_BRANCH -eq "master" `
-        # -and -not $APPVEYOR_PULL_REQUEST_NUMBER `
+        $env:InstallerVersion -ne $env:SeedVersion `
+        -and $env:APPVEYOR_REPO_BRANCH -eq "master" `
+        # -and -not $env:APPVEYOR_PULL_REQUEST_NUMBER `
       ) { `
         "`nSeed version differs from version in source code!" + `
-        "`n  Version in source code: $env.InstallerVersion" + `
-        "`n  Version in seed file:   $env.SeedVersion" + `
+        "`n  Version in source code: $env:InstallerVersion" + `
+        "`n  Version in seed file:   $env:SeedVersion" + `
         "`nMake sure to update the value before pushing to master." `
         | Write-Warning `
       }
@@ -56,8 +56,8 @@ before_deploy:
       $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
         -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
         % { $($_.matches.groups[1]).Value };
-
-      If ($InstallerVersion -ne $SeedVersion) `
+  - ps: |-
+      If ($env:InstallerVersion -ne $env:SeedVersion) `
       { `
         throw `
           "Seed version differs from version in source code!`n" + `
