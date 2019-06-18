@@ -35,16 +35,16 @@ before_build:
         -and $env:APPVEYOR_REPO_BRANCH -eq "master" `
         # -and -not $env:APPVEYOR_PULL_REQUEST_NUMBER `
       ) { `
-        $message = `
-          "`nSeed version differs from version in source code!" + `
-          "`n  Version in source code: $env:InstallerVersion" + `
-          "`n  Version in seed file:   $env:SeedVersion" + `
-          "`nMake sure to update the value before pushing to master.";
+        $message = "Seed version differs from version in source code!";
+        $details = `
+          "`tVersion in source code: $env:InstallerVersion`n" + `
+          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "Make sure to update the value before pushing to master.";
         Add-AppveyorMessage `
-          -Message "Seed version differs from version in source code!" `
+          -Message "$message" `
           -Category Warning `
-          -Details "$message" `
-        # Write-Warning $message `
+          -Details "$details" `
+        Write-Warning "$message`n$details" `
       }
 
 build_script:
@@ -54,20 +54,14 @@ test: off
 
 notifications:
   - provider: GitHubPullRequest
-    template: >-
-      <p>
-        {{#passed}}:white_check_mark:{{/passed}}
-        {{#messages}}:warning:{{/messages}}
-        {{#failed}}:x:{{/failed}}
-        [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}})
-        (commit {{commitUrl}} by @{{&commitAuthorUsername}})
-      </p>
+    template: >
+      {{#passed}}:white_check_mark:{{/passed}}{{#failed}}:x:{{/failed}} [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}}) (commit {{commitUrl}} by @{{&commitAuthorUsername}})
       <p>Build messages:</p>
       <ul>
       {{#jobs}}
         {{#messages}}
-          <li>{{message}}<br>
-              {{details}}
+          <li>:warning: {{message}}<br>
+            {{details}}
           </li>
         {{/messages}}
       {{/jobs}}
@@ -86,11 +80,16 @@ before_deploy:
   - ps: |-
       If ($env:InstallerVersion -ne $env:SeedVersion) `
       { `
-        throw `
-          "Seed version differs from version in source code!`n" + `
+        $message = "Seed version differs from version in source code!";
+        $details = `
           "`tVersion in source code: $env:InstallerVersion`n" + `
-          "`tVersion in seed file:   $env:SeedVersion" + `
-          "You have to update the value before releasing" `
+          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "You must to update the value before releasing.";
+        Add-AppveyorMessage `
+          -Message "$message" `
+          -Category Error `
+          -Details "$details" `
+        throw "$message`n$details" `
       }
 
 deploy:
