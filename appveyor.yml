@@ -56,6 +56,7 @@ notifications:
   - provider: GitHubPullRequest
     template: >
       {{#passed}}:white_check_mark:{{/passed}}{{#failed}}:x:{{/failed}} [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}}) (commit {{commitUrl}} by @{{&commitAuthorUsername}})
+      {{#jobs}}{{#artifacts}}<br><b>Artifact:</b> [{{fileName}}]({{permalink}}) ({{size}} bytes){{/artifacts}}{{/jobs}}
       <p>Build messages:</p>
       <ul>
       {{#jobs}}
