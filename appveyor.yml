@@ -1,0 +1,105 @@
+image: Visual Studio 2017
+version: '{build}'
+max_jobs: 1
+clone_depth: 5
+
+pull_requests:
+  do_not_increment_build_number: true
+skip_tags: true
+only_commits:
+  files:
+    - Medusa.iss
+    - seed.ini
+    - idp/**
+    - assets/**
+    - utils/**
+    - appveyor.yml
+
+install:
+  - ps: choco install -y --no-progress InnoSetup
+
+before_build:
+  - ps: |-
+      $env:InstallerVersion = Select-String -Path .\Medusa.iss `
+        -Pattern '^#define\sInstallerVersion\s([\d]+)' | `
+        % { $($_.matches.groups[1]).Value };
+
+  - ps: |-
+      $env:SeedVersion = Select-String -Path .\seed.ini `
+        -Pattern '^Version=([\d]+)' | `
+        % { $($_.matches.groups[1]).Value };
+
+  - ps: |-
+      If ( `
+        $env:InstallerVersion -ne $env:SeedVersion `
+        -and $env:APPVEYOR_REPO_BRANCH -eq "master" `
+        # -and -not $env:APPVEYOR_PULL_REQUEST_NUMBER `
+      ) { `
+        $message = "Seed version differs from version in source code!";
+        $details = `
+          "`tVersion in source code: $env:InstallerVersion`n" + `
+          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "Make sure to update the value before pushing to master.";
+        Add-AppveyorMessage `
+          -Message "$message" `
+          -Category Warning `
+          -Details "$details"; `
+        Write-Warning "$message`n$details" `
+      }
+
+build_script:
+  - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /Q Medusa.iss'
+
+test: off
+
+notifications:
+  - provider: GitHubPullRequest
+    template: >
+      {{#passed}}:white_check_mark:{{/passed}}{{#failed}}:x:{{/failed}} [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}}) (commit {{commitUrl}} by @{{&commitAuthorUsername}})
+      <p>Build messages:</p>
+      <ul>
+      {{#jobs}}
+        {{#messages}}
+          <li>:warning: {{message}}<br>
+            {{details}}
+          </li>
+        {{/messages}}
+      {{/jobs}}
+      </ul>
+
+artifacts:
+  - path: Output\MedusaInstaller.exe
+    name: MedusaInstaller.exe
+
+before_deploy:
+  - ps: |-
+      $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
+        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
+        % { $($_.matches.groups[1]).Value };
+
+  - ps: |-
+      If ($env:InstallerVersion -ne $env:SeedVersion) `
+      { `
+        $message = "Seed version differs from version in source code!";
+        $details = `
+          "`tVersion in source code: $env:InstallerVersion`n" + `
+          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "You must to update the value before releasing.";
+        Add-AppveyorMessage `
+          -Message "$message" `
+          -Category Error `
+          -Details "$details"; `
+        throw "$message`n$details" `
+      }
+
+deploy:
+  - provider: GitHub
+    tag: $(ReleaseVersion)
+    release: Release $(ReleaseVersion)
+    force_update: true         # replaces current release
+    draft: true                # release as a draft
+    auth_token:
+      secure: epQRjuQ/hfy8BkTBL3NYVnmkFnsVlYEDKX5XB7RcY2Ort3Fo2sXX8LZdW+sNyRa3
+    artifact: MedusaInstaller.exe
+    on:
+      branch: master           # release from master branch only
