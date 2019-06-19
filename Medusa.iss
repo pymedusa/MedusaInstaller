@@ -102,6 +102,9 @@ WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need In
 AboutSetupNote=MedusaInstaller {#MedusaInstallerVersion}
 BeveledLabel=MedusaInstaller {#MedusaInstallerVersion}
 
+[INI]
+Filename: "{app}\Data\config.ini"; Section: "General"; Key: "web_port"; String: "{code:GetWebPort}"; Flags: createkeyifdoesntexist
+
 [Code]
 type
   TDependency = record
@@ -467,7 +470,7 @@ begin
   OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" "{app}\{#AppName}\start.py" --nolaunch --port='+GetWebPort('')+' --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" "{app}\{#AppName}\start.py" --nolaunch --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
