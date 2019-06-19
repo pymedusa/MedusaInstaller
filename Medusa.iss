@@ -111,6 +111,14 @@ type
     SHA1:     String;
   end;
 
+  TInstallOptions = record
+    Page: TWizardPage;
+    WebPort: TNewEdit;
+    Branch: TNewCheckListBox;
+    PythonPath: TNewEdit;
+    GitPath: TNewEdit;
+  end;
+
   IShellLinkW = interface(IUnknown)
     '{000214F9-0000-0000-C000-000000000046}'
     procedure Dummy;
@@ -175,9 +183,7 @@ var
   SeedDownloadPageId, DependencyDownloadPageId: Integer;
   PythonDep, GitDep: TDependency;
   InstallDepPage: TOutputProgressWizardPage;
-  OptionsPage: TWizardPage;
-  OptionWebPort: TNewEdit;
-  OptionBranch: TNewCheckListBox;
+  InstallOptions: TInstallOptions;
   // Uninstall variables
   UninstallRemoveData: Boolean;
 
@@ -355,17 +361,17 @@ end;
 
 function GetWebPort(Param: String): String;
 begin
-  Result := OptionWebPort.Text
+  Result := InstallOptions.WebPort.Text
 end;
 
 function GetBranch(Param: String): String;
 var
   Idx: Integer;
 begin
-  for Idx := 0 to OptionBranch.Items.Count - 1 do
+  for Idx := 0 to InstallOptions.Branch.Items.Count - 1 do
   begin
-    if OptionBranch.Checked[Idx] then begin
-      Result := OptionBranch.ItemCaption[Idx]
+    if InstallOptions.Branch.Checked[Idx] then begin
+      Result := InstallOptions.Branch.ItemCaption[Idx]
       break;
     end;
   end;
@@ -523,33 +529,34 @@ begin
 
   InstallDepPage := CreateOutputProgressPage('Installing Dependencies', ExpandConstant('Setup is installing {#AppName} dependencies...'));
 
-  OptionsPage := CreateCustomPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'));
+  InstallOptions.Page := CreateCustomPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'));
 
-  WebPortCaption := TNewStaticText.Create(OptionsPage);
+  WebPortCaption := TNewStaticText.Create(InstallOptions.Page);
   WebPortCaption.Anchors := [akLeft, akRight];
   WebPortCaption.Caption := ExpandConstant('{#AppName} Web Server Port:');
   WebPortCaption.AutoSize := True;
-  WebPortCaption.Parent := OptionsPage.Surface;
+  WebPortCaption.Parent := InstallOptions.Page.Surface;
 
-  OptionWebPort := TNewEdit.Create(OptionsPage);
-  OptionWebPort.Top := WebPortCaption.Top + WebPortCaption.Height + ScaleY(8);
-  OptionWebPort.Text := ExpandConstant('{#DefaultPort}');
-  OptionWebPort.Parent := OptionsPage.Surface;
+  InstallOptions.WebPort := TNewEdit.Create(InstallOptions.Page);
+  InstallOptions.WebPort.Top := WebPortCaption.Top + WebPortCaption.Height + ScaleY(8);
+  InstallOptions.WebPort.Text := ExpandConstant('{#DefaultPort}');
+  InstallOptions.WebPort.Parent := InstallOptions.Page.Surface;
+  InstallOptions.WebPort.Width := ScaleX(50);
 
-  OptionBranch := TNewCheckListBox.Create(OptionsPage);
-  OptionBranch.Top := OptionWebPort.Top + OptionWebPort.Height;
-  OptionBranch.Width := ScaleX(30);
-  OptionBranch.Height := ScaleY(100);
-  OptionBranch.Anchors := [akLeft, akRight];
-  OptionBranch.BorderStyle := bsNone;
-  OptionBranch.ParentColor := True;
-  OptionBranch.MinItemHeight := WizardForm.TasksList.MinItemHeight;
-  OptionBranch.ShowLines := False;
-  OptionBranch.WantTabs := True;
-  OptionBranch.Parent := OptionsPage.Surface;
-  OptionBranch.AddGroup('Branch:', '', 0, nil);
-  OptionBranch.AddRadioButton('master', '(stable)', 0, True, True, nil);
-  OptionBranch.AddRadioButton('develop', '(development)', 0, False, True, nil);
+  InstallOptions.Branch := TNewCheckListBox.Create(InstallOptions.Page);
+  InstallOptions.Branch.Top := InstallOptions.WebPort.Top + InstallOptions.WebPort.Height;
+  InstallOptions.Branch.Width := ScaleX(50);
+  InstallOptions.Branch.Height := ScaleY(100);
+  InstallOptions.Branch.Anchors := [akLeft, akRight];
+  InstallOptions.Branch.BorderStyle := bsNone;
+  InstallOptions.Branch.ParentColor := True;
+  InstallOptions.Branch.MinItemHeight := WizardForm.TasksList.MinItemHeight;
+  InstallOptions.Branch.ShowLines := False;
+  InstallOptions.Branch.WantTabs := True;
+  InstallOptions.Branch.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Branch.AddGroup('Branch:', '', 0, nil);
+  InstallOptions.Branch.AddRadioButton('master', '(stable)', 0, True, True, nil);
+  InstallOptions.Branch.AddRadioButton('develop', '(development)', 0, False, True, nil);
 end;
 
 function ShellLinkRunAsAdmin(LinkFilename: String): Boolean;
@@ -613,11 +620,11 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 var
   Port: Integer;
 begin
-  Result := True
+  Result := True;
 
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
-  end else if CurPageId = OptionsPage.ID then begin
+  end else if CurPageId = InstallOptions.Page.ID then begin
     // Make sure valid port is specified
     Port := StrToIntDef(GetWebPort(''), 0)
     if (Port = 0) or (Port < MinPort) or (Port > MaxPort) then begin
