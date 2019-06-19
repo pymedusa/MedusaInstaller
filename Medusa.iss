@@ -50,8 +50,8 @@ Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
 Name: "application"; Description: {#AppName}; ExtraDiskSpaceRequired: {#AppSize}; Types: "full custom"; Flags: fixed
-Name: "python"; Description: "Python"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"; Flags: fixed
-Name: "git"; Description: "Git"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"; Flags: fixed
+Name: "python"; Description: "Python"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"
+Name: "git"; Description: "Git"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -113,12 +113,18 @@ type
     Version:  String;
   end;
 
+  TBrowseOptions = record
+    Caption: TNewStaticText;
+    Path: TNewStaticText;
+    Browse: TNewButton;
+  end;
+
   TInstallOptions = record
     Page: TWizardPage;
     WebPort: TNewEdit;
     Branch: TNewCheckListBox;
-    PythonPath: TNewEdit;
-    GitPath: TNewEdit;
+    Python: TBrowseOptions;
+    Git: TBrowseOptions;
   end;
 
   IShellLinkW = interface(IUnknown)
@@ -407,12 +413,21 @@ begin
   end;
 end;
 
+function GetPythonExecutable(Param: String): String;
+begin
+  if WizardIsComponentSelected('python') then begin
+    Result := ExpandConstant('{app}\Python\python.exe')
+  end else begin
+    Result := InstallOptions.Python.Path.Caption
+  end;
+end;
+
 function GetGitExecutable(Param: String): String;
 begin
   if WizardIsComponentSelected('git') then begin
     Result := ExpandConstant('{app}\Git\cmd\git.exe')
   end else begin
-    Result := 'git'
+    Result := InstallOptions.Git.Path.Caption
   end;
 end;
 
@@ -437,16 +452,14 @@ end;
 procedure CreateService();
 var
   PythonExecutable: String;
+  GitPath: String;
   Nssm: String;
   ResultCode: Integer;
   OldProgressString: String;
   WindowsVersion: TWindowsVersion;
 begin
-  if WizardIsComponentSelected('python') then begin
-    PythonExecutable := ExpandConstant('"{app}\Python\python.exe"')
-  end else begin
-    PythonExecutable := '"python"'
-  end;
+  PythonExecutable := GetPythonExecutable('')
+  GitPath := ExtractFileDir(GetGitExecutable(''))
 
   Nssm := ExpandConstant('{app}\Installer\nssm.exe')
   GetWindowsVersionEx(WindowsVersion);
@@ -454,14 +467,12 @@ begin
   OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" '+PythonExecutable+' "{app}\{#AppName}\start.py" --nolaunch --port='+GetWebPort('')+' --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" "{app}\{#AppName}\start.py" --nolaunch --port='+GetWebPort('')+' --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodConsole 20000'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  if WizardIsComponentSelected('git') then begin
-    Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH={app}\Git\cmd;%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  end;
+  Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH='+GitPath+';%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
 
   if WindowsVersion.NTPlatform and (WindowsVersion.Major = 10) and (WindowsVersion.Minor = 0) and (WindowsVersion.Build > 14393) then begin
     Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppNoConsole 1'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
@@ -542,6 +553,26 @@ begin
   Result := Result and VerifyDependency(GitDep)
 end;
 
+procedure OnPythonBrowseClick(Sender: TObject);
+var
+  Filename: String;
+begin
+  // Browse for a custom Python executable
+  if GetOpenFilename('Path to Python executable:', Filename, '', 'Python executable (python.exe)|python.exe', 'python.exe') then begin
+    InstallOptions.Python.Path.Caption := Filename;
+  end;
+end;
+
+procedure OnGitBrowseClick(Sender: TObject);
+var
+  Filename: String;
+begin
+  // Browse for a custom Git executable
+  if GetOpenFilename('Path to Git executable:', Filename, '', 'Git executable (git.exe)|git.exe', 'git.exe') then begin
+    InstallOptions.Git.Path.Caption := Filename;
+  end;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   if ErrorMessage <> '' then begin
@@ -604,7 +635,7 @@ begin
   InstallOptions.Branch := TNewCheckListBox.Create(InstallOptions.Page);
   InstallOptions.Branch.Top := InstallOptions.WebPort.Top + InstallOptions.WebPort.Height;
   InstallOptions.Branch.Width := ScaleX(50);
-  InstallOptions.Branch.Height := ScaleY(100);
+  InstallOptions.Branch.Height := ScaleY(70);
   InstallOptions.Branch.Anchors := [akLeft, akRight];
   InstallOptions.Branch.BorderStyle := bsNone;
   InstallOptions.Branch.ParentColor := True;
@@ -615,6 +646,60 @@ begin
   InstallOptions.Branch.AddGroup('Branch:', '', 0, nil);
   InstallOptions.Branch.AddRadioButton('master', '(stable)', 0, True, True, nil);
   InstallOptions.Branch.AddRadioButton('develop', '(development)', 0, False, True, nil);
+
+  InstallOptions.Python.Caption := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Python.Caption.Anchors := [akLeft, akRight];
+  InstallOptions.Python.Caption.Top := InstallOptions.Branch.Top + InstallOptions.Branch.Height + ScaleY(8);
+  InstallOptions.Python.Caption.Caption := 'Path to Python executable:';
+  InstallOptions.Python.Caption.AutoSize := True;
+  InstallOptions.Python.Caption.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Caption.Visible := False;
+
+  InstallOptions.Python.Path := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Python.Path.Anchors := [akLeft];
+  InstallOptions.Python.Path.Top := InstallOptions.Python.Caption.Top;
+  InstallOptions.Python.Path.Left := InstallOptions.Python.Caption.Left + InstallOptions.Python.Caption.Width + ScaleX(2);
+  InstallOptions.Python.Path.AutoSize := True;
+  InstallOptions.Python.Path.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Path.Caption := '';
+  InstallOptions.Python.Path.Visible := False;
+
+  InstallOptions.Python.Browse := TNewButton.Create(InstallOptions.Page);
+  InstallOptions.Python.Browse.Anchors := [akLeft];
+  InstallOptions.Python.Browse.Top := InstallOptions.Python.Path.Top + InstallOptions.Python.Path.Height;
+  InstallOptions.Python.Browse.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Browse.Width := ScaleX(75);
+  InstallOptions.Python.Browse.Height := ScaleY(23);
+  InstallOptions.Python.Browse.Caption := 'Browse...';
+  InstallOptions.Python.Browse.Visible := False;
+  InstallOptions.Python.Browse.OnClick := @OnPythonBrowseClick;
+
+  InstallOptions.Git.Caption := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Git.Caption.Anchors := [akLeft, akRight];
+  InstallOptions.Git.Caption.Top := InstallOptions.Python.Browse.Top + InstallOptions.Python.Browse.Height + ScaleY(8);
+  InstallOptions.Git.Caption.Caption := 'Path to Git executable:';
+  InstallOptions.Git.Caption.AutoSize := True;
+  InstallOptions.Git.Caption.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Caption.Visible := False;
+
+  InstallOptions.Git.Path := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Git.Path.Anchors := [akLeft];
+  InstallOptions.Git.Path.Top := InstallOptions.Git.Caption.Top;
+  InstallOptions.Git.Path.Left := InstallOptions.Git.Caption.Left + InstallOptions.Git.Caption.Width + ScaleX(2);
+  InstallOptions.Git.Path.AutoSize := True;
+  InstallOptions.Git.Path.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Path.Caption := '';
+  InstallOptions.Git.Path.Visible := False;
+
+  InstallOptions.Git.Browse := TNewButton.Create(InstallOptions.Page);
+  InstallOptions.Git.Browse.Anchors := [akLeft];
+  InstallOptions.Git.Browse.Top := InstallOptions.Git.Path.Top + InstallOptions.Git.Path.Height;
+  InstallOptions.Git.Browse.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Browse.Width := ScaleX(75);
+  InstallOptions.Git.Browse.Height := ScaleY(23);
+  InstallOptions.Git.Browse.Caption := 'Browse...';
+  InstallOptions.Git.Browse.Visible := False;
+  InstallOptions.Git.Browse.OnClick := @OnGitBrowseClick;
 end;
 
 function ShellLinkRunAsAdmin(LinkFilename: String): Boolean;
@@ -683,12 +768,42 @@ begin
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
     UpdateComponentsPageDependencyVersions()
+  end else if CurPageId = wpSelectComponents then begin
+    // Make options visible depending on component selection
+    InstallOptions.Python.Caption.Visible := not WizardIsComponentSelected('python');
+    InstallOptions.Python.Path.Visible := not WizardIsComponentSelected('python');
+    InstallOptions.Python.Path.Caption := '';
+    InstallOptions.Python.Browse.Visible := not WizardIsComponentSelected('python');
+
+    InstallOptions.Git.Caption.Visible := not WizardIsComponentSelected('git');
+    InstallOptions.Git.Path.Visible := not WizardIsComponentSelected('git');
+    InstallOptions.Git.Path.Caption := '';
+    InstallOptions.Git.Browse.Visible := not WizardIsComponentSelected('git');
   end else if CurPageId = InstallOptions.Page.ID then begin
     // Make sure valid port is specified
     Port := StrToIntDef(GetWebPort(''), 0)
     if (Port = 0) or (Port < MinPort) or (Port > MaxPort) then begin
       MsgBox(FmtMessage('Please specify a valid port between %1 and %2.', [IntToStr(MinPort), IntToStr(MaxPort)]), mbError, 0)
       Result := False;
+      exit;
+    end;
+
+    // Make sure custom Python path is supplied
+    if not WizardIsComponentSelected('python') then begin
+      if InstallOptions.Python.Path.Caption = '' then begin
+        MsgBox('Please specify the path to the Python executable.', mbError, 0)
+        Result := False;
+        exit;
+      end;
+    end;
+
+    // Make sure custom Git path is supplied
+    if not WizardIsComponentSelected('git') then begin
+      if InstallOptions.Git.Path.Caption = '' then begin
+        MsgBox('Please specify the path to the Git executable.', mbError, 0)
+        Result := False;
+        exit;
+      end;
     end;
   end;
 end;
