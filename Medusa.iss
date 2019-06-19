@@ -50,8 +50,8 @@ Name: "custom"; Description: "Custom installation"; Flags: iscustom
 
 [Components]
 Name: "application"; Description: {#AppName}; ExtraDiskSpaceRequired: {#AppSize}; Types: "full custom"; Flags: fixed
-Name: "python"; Description: "Python v3.7.3"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"; Flags: fixed
-Name: "git"; Description: "Git v2.22.0"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"; Flags: fixed
+Name: "python"; Description: "Python"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"; Flags: fixed
+Name: "git"; Description: "Git"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"; Flags: fixed
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -110,6 +110,7 @@ type
     Filename: String;
     Size:     Integer;
     SHA1:     String;
+    Version:  String;
   end;
 
   TInstallOptions = record
@@ -228,6 +229,57 @@ begin
   end;
 end;
 
+function GetDependencyVersion(Dependency: TDependency): String;
+var
+  StartIndex: Integer;
+begin
+  Result := Dependency.Filename;
+  // Handle Git dependency
+  if Pos('git', Lowercase(Dependency.Name)) <> 0 then begin
+    // --> MinGit-2.22.0-32-bit.zip
+    // --> MinGit-2.22.0-64-bit.zip
+    StartIndex := Pos('-', Result) + 1;
+    Result := Copy(Result, StartIndex, Length(Result));
+    // <-- 2.22.0-64-bit.zip
+    StartIndex := Pos('-', Result);
+    Delete(Result, StartIndex, Length(Result));
+    // <-- 2.22.0
+  // Handle Python dependency
+  end else if Pos('python', Lowercase(Dependency.Name)) <> 0 then begin
+    // --> pythonx86.3.7.3.nupkg
+    // --> python.3.7.3.nupkg
+    StartIndex := Pos('.', Result) + 1;
+    Result := Copy(Result, StartIndex, Length(Result));
+    // <-- 3.7.3.nupkg
+    StartIndex := Pos('nupkg', Result) - 1;
+    Delete(Result, StartIndex, Length(Result));
+    // <-- 3.7.3
+  end else begin
+    Result := '';
+  end;
+end;
+
+procedure UpdateComponentsPageDependencyVersions();
+var
+  Idx: Integer;
+  Version: String;
+begin
+  for Idx := 0 to WizardForm.ComponentsList.Items.Count - 1 do
+  begin
+    Version := '';
+
+    if Pos('python', Lowercase(WizardForm.ComponentsList.ItemCaption[Idx])) <> 0 then begin
+      Version := ' (v' + PythonDep.Version + ')';
+    end;
+
+    if Pos('git', Lowercase(WizardForm.ComponentsList.ItemCaption[Idx])) <> 0 then begin
+      Version := ' (v' + GitDep.Version + ')';
+    end;
+
+    WizardForm.ComponentsList.ItemCaption[Idx] := WizardForm.ComponentsList.ItemCaption[Idx] + Version;
+  end;
+end;
+
 procedure ParseDependency(var Dependency: TDependency; Name, SeedFile: String);
 var
   LocalFile: String;
@@ -238,6 +290,7 @@ begin
   Dependency.Filename := GetIniString(Name, 'filename', '', SeedFile)
   Dependency.Size     := GetIniInt(Name, 'size', 0, 0, MaxInt, SeedFile)
   Dependency.SHA1     := GetIniString(Name, 'sha1', '', SeedFile)
+  Dependency.Version  := '';
 
   if (Dependency.URL = '') or (Dependency.Size = 0) or (Dependency.SHA1 = '') then begin
     AbortInstallation('Error parsing dependency information for ' + Name + '.')
@@ -260,7 +313,9 @@ begin
     FileCopy(LocalFile, DownloadTarget, True)
   end else begin
     idpAddFileSize(Dependency.URL, DownloadTarget, Dependency.Size)
-  end
+  end;
+
+  Dependency.Version := GetDependencyVersion(Dependency);
 end;
 
 procedure ParseSeedFile();
@@ -318,6 +373,7 @@ begin
   if not IsRemote then begin
     FileCopy(Seed, ExpandConstant('{tmp}\installer.ini'), False)
     ParseSeedFile()
+    UpdateComponentsPageDependencyVersions()
   end else begin
     // Download the installer seed INI file
     // I'm adding a dummy size here otherwise the installer crashes (divide by 0)
@@ -626,6 +682,7 @@ begin
 
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
+    UpdateComponentsPageDependencyVersions()
   end else if CurPageId = InstallOptions.Page.ID then begin
     // Make sure valid port is specified
     Port := StrToIntDef(GetWebPort(''), 0)
@@ -674,6 +731,33 @@ begin
   end;
 end;
 
+procedure InjectDependencyVersions(var MemoComponentsInfo: String);
+var
+  SearchStr: String;
+  Position: Integer;
+begin
+  if MemoComponentsInfo = '' then begin
+    exit;
+  end;
+
+  // Inject dependency versions into MemoComponentsInfo
+  if WizardIsComponentSelected('git') and (GitDep.Version <> '') then begin
+    SearchStr := '   Git'
+    Position := Pos(SearchStr, MemoComponentsInfo)
+    if Position <> 0 then begin
+      Insert(' (v' + GitDep.Version + ')', MemoComponentsInfo, Position + Length(SearchStr));
+    end;
+  end;
+
+  if WizardIsComponentSelected('python') and (PythonDep.Version <> '') then begin
+    SearchStr := '   Python'
+    Position := Pos(SearchStr, MemoComponentsInfo)
+    if Position <> 0 then begin
+      Insert(' (v' + PythonDep.Version + ')', MemoComponentsInfo, Position + Length(SearchStr));
+    end;
+  end;
+end;
+
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
   MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 var
@@ -684,6 +768,9 @@ begin
   S := Append(MemoDirInfo, S, NewLine);
   S := Append(MemoGroupInfo, S, NewLine);
   // S := Append(MemoTypeInfo, S, NewLine);
+
+  InjectDependencyVersions(MemoComponentsInfo);
+
   S := Append(MemoComponentsInfo, S, NewLine);
 
   S := Append('Web server port:' + NewLine + Space + GetWebPort(''), S, NewLine);
