@@ -42,6 +42,7 @@ SetupIconFile=assets\medusa.ico
 WizardImageFile=assets\Wizard.bmp
 WizardSmallImageFile=assets\WizardSmall.bmp
 WizardStyle=modern
+WizardResizable=no
 
 [Types]
 Name: "full"; Description: "Full installation"
@@ -529,6 +530,7 @@ begin
 
   InstallDepPage := CreateOutputProgressPage('Installing Dependencies', ExpandConstant('Setup is installing {#AppName} dependencies...'));
 
+  // Custom Options Page
   InstallOptions.Page := CreateCustomPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'));
 
   WebPortCaption := TNewStaticText.Create(InstallOptions.Page);
