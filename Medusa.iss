@@ -1,6 +1,6 @@
 #include <.\idp\idp.iss>
 
-#define MedusaInstallerVersion "v0.5"
+#define MedusaInstallerVersion "v0.6"
 
 #define AppId "{{991BED37-186A-5451-9E77-C3DCE91D56C7}"
 #define AppName "Medusa"
@@ -14,7 +14,7 @@
 
 #define DefaultPort 8081
 
-#define InstallerVersion 10005
+#define InstallerVersion 10006
 #define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
 #define AppRepoUrl "https://github.com/pymedusa/Medusa.git"
 #define AppSize 246784000
