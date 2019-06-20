@@ -110,7 +110,7 @@ before_deploy:
         $env:ReleaseVersion -eq $LatestGitHubRelease.tag_name `
         -and -not $LatestGitHubRelease.draft `
       ) { `
-        Write-Warning "Not deploying because release $env:ReleaseVersion is already published." `
+        Write-Warning "Not deploying because release $env:ReleaseVersion is already published."; `
         Exit-AppveyorBuild `
       }
 
