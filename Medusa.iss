@@ -78,9 +78,7 @@ Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "e
 
 [Run]
 ;Medusa
-Filename: "{code:GetGitExecutable}"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"" --branch {code:GetBranch}"; StatusMsg: "Installing {#AppName}..."
-;Local test
-;Filename: "robocopy.exe"; Parameters: """{param:LOCALREPO}"" ""{app}\{#AppName}"" /E /IS /IT /NFL /NDL /NJH"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
+Filename: "{code:GetGitExecutable}"; Parameters: "clone ""{param:LOCALREPO|{#AppRepoUrl}}"" ""{app}\{#AppName}"" --branch {code:GetBranch}"; StatusMsg: "Installing {#AppName}..."
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: runhidden; BeforeInstall: CreateService; StatusMsg: "Starting {#AppName} service..."
 ;Open
