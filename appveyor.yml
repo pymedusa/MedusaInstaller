@@ -56,6 +56,7 @@ notifications:
   - provider: GitHubPullRequest
     template: >
       {{#passed}}:white_check_mark:{{/passed}}{{#failed}}:x:{{/failed}} [Build {{&projectName}} {{buildVersion}} {{status}}]({{buildUrl}}) (commit {{commitUrl}} by @{{&commitAuthorUsername}})
+      {{#jobs}}{{#artifacts}}<br><b>Artifact:</b> [{{fileName}}]({{permalink}}) ({{size}} bytes){{/artifacts}}{{/jobs}}
       <p>Build messages:</p>
       <ul>
       {{#jobs}}
@@ -71,12 +72,11 @@ artifacts:
   - path: Output\MedusaInstaller.exe
     name: MedusaInstaller.exe
 
-before_deploy:
-  - ps: |-
-      $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
-        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
-        % { $($_.matches.groups[1]).Value };
+environment:
+  GH_TOKEN:
+    secure: epQRjuQ/hfy8BkTBL3NYVnmkFnsVlYEDKX5XB7RcY2Ort3Fo2sXX8LZdW+sNyRa3
 
+before_deploy:
   - ps: |-
       If ($env:InstallerVersion -ne $env:SeedVersion) `
       { `
@@ -92,14 +92,35 @@ before_deploy:
         throw "$message`n$details" `
       }
 
+  - ps: |-
+      $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
+        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
+        % { $($_.matches.groups[1]).Value };
+
+  - ps: |-
+      $headers = @{
+        "Authorization" = "Bearer $env:GH_TOKEN"
+        "Content-type" = "application/json"
+      }; `
+      $LatestGitHubRelease = Invoke-RestMethod `
+        -Uri "https://api.github.com/repos/$env:APPVEYOR_REPO_NAME/releases/latest" `
+        -Headers $headers `
+        -Method GET; `
+      If ( `
+        $env:ReleaseVersion -eq $LatestGitHubRelease.tag_name `
+        -and -not $LatestGitHubRelease.draft `
+      ) { `
+        Write-Warning "Not deploying because release $env:ReleaseVersion is already published." `
+        Exit-AppveyorBuild `
+      }
+
 deploy:
   - provider: GitHub
     tag: $(ReleaseVersion)
     release: Release $(ReleaseVersion)
     force_update: true         # replaces current release
     draft: true                # release as a draft
-    auth_token:
-      secure: epQRjuQ/hfy8BkTBL3NYVnmkFnsVlYEDKX5XB7RcY2Ort3Fo2sXX8LZdW+sNyRa3
+    auth_token: $(GH_TOKEN)
     artifact: MedusaInstaller.exe
     on:
       branch: master           # release from master branch only
