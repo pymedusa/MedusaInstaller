@@ -455,6 +455,42 @@ begin
   end;
 end;
 
+function ConfigureCustomPython(Python: String): String;
+var
+  VirtualEnvPath: String;
+  ResultCode: Integer;
+begin
+  VirtualEnvPath := ExpandConstant('{app}\Python')
+  Result := VirtualEnvPath + '\Scripts\python.exe'
+
+  Exec(Python, '-m venv "'+VirtualEnvPath+'"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  if ResultCode = 0 then begin
+    // Success using venv (Included in Python >= 3.3)
+    exit;
+  end;
+
+  // Fall back to installing latest `virtualenv` using Pip and using that.
+  // Some versions of Pip for Python 2.7 on Windows have an issue where having a progress bar can fail the install.
+  Exec(Python, '-m pip install --progress-bar off --upgrade virtualenv', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  if ResultCode = 0 then begin
+    // Install/Upgrade successful
+    Exec(Python, '-m virtualenv "'+VirtualEnvPath+'"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+    if ResultCode = 0 then begin
+      // Success using virtualenv (external package)
+      exit;
+    end;
+  end;
+
+  // Fall back to non-virtualenv (not recommended).
+  Result := Python;
+  MsgBox(
+    'Failed to configure custom Python:' #13#10#13#10 'Unable to install/upgrade or configure virtualenv.' + \
+    #13#10 'Falling back to using the custom Python executable as-is (not recommended).',
+    mbError, MB_OK
+  );
+end;
+
+
 procedure CreateService();
 var
   PythonExecutable: String;
@@ -467,10 +503,18 @@ begin
   PythonExecutable := GetPythonExecutable('')
   GitPath := ExtractFileDir(GetGitExecutable(''))
 
+  OldProgressString := WizardForm.StatusLabel.Caption;
+
+  // Python was not selected, let's isolate this install using v(irtual)env
+  if not WizardIsComponentSelected('python') then begin
+    WizardForm.StatusLabel.Caption := ExpandConstant('Configuring custom Python...');
+    // Returns the path to the new virtual env's Python executable.
+    PythonExecutable := ConfigureCustomPython(PythonExecutable);
+  end;
+
   Nssm := ExpandConstant('{app}\Installer\nssm.exe')
   GetWindowsVersionEx(WindowsVersion);
 
-  OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
   Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" "{app}\{#AppName}\start.py" --nolaunch --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
