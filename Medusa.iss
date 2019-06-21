@@ -96,7 +96,12 @@ Type: filesandordirs; Name: "{app}\{#AppName}"
 Type: dirifempty; Name: "{app}"
 
 [Messages]
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.%n%nNOTE: This installer intentionally ignores any existing installations of Git or Python you might already have installed on your system. If you prefer to use those versions, we recommend installing [name] manually.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.
+SelectComponentsLabel2=Select the components you want to install; clear the components you do not want to install. Click Next when you are ready to continue. \
+  %n%nPlease note: \
+  %n  By default, this installer provides the dependencies required to run [name]. \
+  %n  If you have Git or Python already installed on your system, and you would prefer to use those versions, \
+  %n  you may deselect the dependencies you already have and provide a path to the already-installed versions.
 AboutSetupNote=MedusaInstaller {#MedusaInstallerVersion}
 BeveledLabel=MedusaInstaller {#MedusaInstallerVersion}
 
