@@ -562,20 +562,28 @@ end;
 procedure OnPythonBrowseClick(Sender: TObject);
 var
   Filename: String;
+  FilenameLength: Integer;
 begin
   // Browse for a custom Python executable
   if GetOpenFilename('Path to Python executable:', Filename, '', 'Python executable (python.exe)|python.exe', 'python.exe') then begin
-    InstallOptions.Python.Path.Caption := Filename;
+    FilenameLength := Length(Filename);
+    if Copy(Filename, FilenameLength - Length('\python.exe') + 1, FilenameLength) = '\python.exe' then begin
+      InstallOptions.Python.Path.Caption := Filename;
+    end;
   end;
 end;
 
 procedure OnGitBrowseClick(Sender: TObject);
 var
   Filename: String;
+  FilenameLength: Integer;
 begin
   // Browse for a custom Git executable
   if GetOpenFilename('Path to Git executable:', Filename, '', 'Git executable (git.exe)|git.exe', 'git.exe') then begin
-    InstallOptions.Git.Path.Caption := Filename;
+    FilenameLength := Length(Filename);
+    if Copy(Filename, FilenameLength - Length('\git.exe') + 1, FilenameLength) = '\git.exe' then begin
+      InstallOptions.Git.Path.Caption := Filename;
+    end;
   end;
 end;
 
