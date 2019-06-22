@@ -463,7 +463,7 @@ begin
   VirtualEnvPath := ExpandConstant('{app}\Python')
   Result := VirtualEnvPath + '\Scripts\python.exe'
 
-  Exec(Python, '-m venv "'+VirtualEnvPath+'"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  Exec(Python, '-m venv "'+VirtualEnvPath+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   if ResultCode = 0 then begin
     // Success using venv (Included in Python >= 3.3)
     exit;
@@ -471,10 +471,10 @@ begin
 
   // Fall back to installing latest `virtualenv` using Pip and using that.
   // Some versions of Pip for Python 2.7 on Windows have an issue where having a progress bar can fail the install.
-  Exec(Python, '-m pip install --progress-bar off --upgrade virtualenv', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+  Exec(Python, '-m pip install --progress-bar off --upgrade virtualenv', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   if ResultCode = 0 then begin
     // Install/Upgrade successful
-    Exec(Python, '-m virtualenv "'+VirtualEnvPath+'"', '', SW_SHOW, ewWaitUntilTerminated, ResultCode)
+    Exec(Python, '-m virtualenv "'+VirtualEnvPath+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
     if ResultCode = 0 then begin
       // Success using virtualenv (external package)
       exit;
@@ -506,7 +506,7 @@ begin
 
   // Python was not selected, let's isolate this install using v(irtual)env
   if not WizardIsComponentSelected('python') then begin
-    WizardForm.StatusLabel.Caption := ExpandConstant('Configuring custom Python...');
+    WizardForm.StatusLabel.Caption := ExpandConstant('Configuring virtual environment for custom Python...');
     // Returns the path to the new virtual env's Python executable.
     PythonExecutable := ConfigureCustomPython(PythonExecutable);
   end;
