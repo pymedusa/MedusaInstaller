@@ -1,4 +1,4 @@
-#include <.\idp\idp.iss>
+#include <./idp/idp.iss>
 
 #define MedusaInstallerVersion "v0.6"
 
@@ -293,9 +293,6 @@ begin
 end;
 
 procedure ParseDependency(var Dependency: TDependency; Name, SeedFile: String);
-var
-  LocalFile: String;
-  DownloadTarget: String;
 begin
   Dependency.Name     := Name;
   Dependency.URL      := GetIniString(Name, 'url', '', SeedFile)
@@ -316,17 +313,6 @@ begin
     end;
   end;
 
-  if LocalFilesDir <> '' then begin
-    LocalFile := LocalFilesDir + '\' + Dependency.Filename
-  end;
-
-  DownloadTarget := ExpandConstant('{tmp}\') + Dependency.Filename
-  if (LocalFile <> '') and (FileExists(LocalFile)) then begin
-    FileCopy(LocalFile, DownloadTarget, True)
-  end else begin
-    idpAddFileSize(Dependency.URL, DownloadTarget, Dependency.Size)
-  end;
-
   Dependency.Version := GetDependencyVersion(Dependency);
 end;
 
@@ -334,7 +320,6 @@ procedure ParseSeedFile();
 var
   SeedFile: String;
   Arch: String;
-  DownloadPage: TWizardPage;
 begin
   SeedFile := ExpandConstant('{tmp}\installer.ini')
 
@@ -348,16 +333,6 @@ begin
 
   ParseDependency(PythonDep,    'Python.'    + Arch, SeedFile)
   ParseDependency(GitDep,       'Git.'       + Arch, SeedFile)
-
-  DependencyDownloadPageId := idpCreateDownloadForm(wpPreparing)
-  DownloadPage := PageFromID(DependencyDownloadPageId)
-  DownloadPage.Caption := 'Downloading Dependencies'
-  DownloadPage.Description := ExpandConstant('Setup is downloading {#AppName} dependencies...')
-
-  idpSetOption('DetailedMode', '1')
-  idpSetOption('DetailsButton', '0')
-
-  idpConnectControls()
 end;
 
 procedure InitializeSeedDownload();
@@ -599,8 +574,12 @@ function VerifyDependencies(): Boolean;
 begin
   Result := True
 
-  Result := Result and VerifyDependency(PythonDep)
-  Result := Result and VerifyDependency(GitDep)
+  if WizardIsComponentSelected('python') then begin
+    Result := Result and VerifyDependency(PythonDep)
+  end;
+  if WizardIsComponentSelected('git') then begin
+    Result := Result and VerifyDependency(GitDep)
+  end;
 end;
 
 procedure OnPythonBrowseClick(Sender: TObject);
@@ -631,11 +610,59 @@ begin
   end;
 end;
 
+procedure AppendDependency(Dependency: TDependency);
+var
+  LocalFile: String;
+  DownloadTarget: String;
+begin
+  // Add the dependency to the download list (or use it from a local file)
+  if LocalFilesDir <> '' then begin
+    LocalFile := LocalFilesDir + '\' + Dependency.Filename
+  end;
+
+  DownloadTarget := ExpandConstant('{tmp}\') + Dependency.Filename
+  if (LocalFile <> '') and (FileExists(LocalFile)) then begin
+    FileCopy(LocalFile, DownloadTarget, True)
+  end else begin
+    idpAddFileSize(Dependency.URL, DownloadTarget, Dependency.Size)
+  end;
+end;
+
+procedure PrepareDependencies();
+var
+  DownloadPage: TWizardPage;
+  PythonSelected, GitSelected: Boolean;
+begin
+  PythonSelected := WizardIsComponentSelected('python')
+  GitSelected := WizardIsComponentSelected('git')
+
+  if not (PythonSelected or GitSelected) then begin
+    // No dependencies selected, skip creating a "Downloading Dependencies" page
+    exit;
+  end;
+
+  if PythonSelected then AppendDependency(PythonDep);
+  if GitSelected then AppendDependency(GitDep);
+
+  DependencyDownloadPageId := idpCreateDownloadForm(wpPreparing)
+  DownloadPage := PageFromID(DependencyDownloadPageId)
+  DownloadPage.Caption := 'Downloading Dependencies'
+  DownloadPage.Description := ExpandConstant('Setup is downloading {#AppName} dependencies...')
+
+  idpSetOption('DetailedMode', '1')
+  idpSetOption('DetailsButton', '0')
+
+  idpConnectControls()
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   if ErrorMessage <> '' then begin
     Result := ErrorMessage
+    exit;
   end;
+
+  PrepareDependencies();
 end;
 
 procedure InstallDependencies();
