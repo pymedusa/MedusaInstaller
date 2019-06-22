@@ -490,7 +490,6 @@ begin
   );
 end;
 
-
 procedure CreateService();
 var
   PythonExecutable: String;
@@ -517,7 +516,8 @@ begin
 
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" "{app}\{#AppName}\start.py" --nolaunch --datadir="{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  // Keep extra quotes; See "Quoting issues" on https://nssm.cc/usage
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" """{app}\{#AppName}\start.py""" --nolaunch --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
