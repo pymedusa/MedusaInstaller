@@ -667,6 +667,7 @@ procedure InstallDependencies();
 var
   PythonSelected: Boolean;
   GitSelected: Boolean;
+  MaxProgress: Integer;
 begin
   PythonSelected := WizardIsComponentSelected('python')
   GitSelected := WizardIsComponentSelected('git')
@@ -677,7 +678,14 @@ begin
 
   try
     InstallDepPage.Show
-    InstallDepPage.SetProgress(0, 6)
+
+    MaxProgress := 0;
+    // Stages for each dependency - Verify + Install
+    if PythonSelected then MaxProgress := MaxProgress + 2;
+    if GitSelected then MaxProgress := MaxProgress + 2;
+
+    InstallDepPage.SetProgress(0, MaxProgress)
+
     if VerifyDependencies() then begin
       ExtractTemporaryFile('7za.exe')
       if PythonSelected then InstallPython();
