@@ -363,9 +363,7 @@ begin
     UpdateComponentsPageDependencyVersions()
   end else begin
     // Download the installer seed INI file
-    // I'm adding a dummy size here otherwise the installer crashes (divide by 0)
-    // when runnning in silent mode, a bug in IDP maybe?
-    idpAddFileSize(Seed, ExpandConstant('{tmp}\installer.ini'), 1024)
+    idpAddFile(Seed, ExpandConstant('{tmp}\installer.ini'))
 
     SeedDownloadPageId := idpCreateDownloadForm(wpWelcome)
     DownloadPage := PageFromID(SeedDownloadPageId)
