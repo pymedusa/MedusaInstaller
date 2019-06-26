@@ -1,28 +1,28 @@
-#include <.\idp\idp.iss>
+#include <./idp/idp.iss>
 
-#define MedusaInstallerVersion "v0.5"
+#define MedusaInstallerVersion "v0.6"
 
 #define AppId "{{991BED37-186A-5451-9E77-C3DCE91D56C7}"
 #define AppName "Medusa"
-#define AppVersion "master"
 #define AppPublisher "Medusa"
 #define AppURL "https://github.com/pymedusa/Medusa"
 #define AppServiceName AppName
 #define AppServiceDescription "Automatic Video Library Manager for TV Shows"
 #define ServiceStartIcon "{group}\Start " + AppName + " Service"
 #define ServiceStopIcon "{group}\Stop " + AppName + " Service"
+#define ServiceEditIcon "{group}\Edit " + AppName + " Service"
 
 #define DefaultPort 8081
 
-#define InstallerVersion 10005
+#define InstallerVersion 10006
 #define InstallerSeedUrl "https://raw.githubusercontent.com/pymedusa/MedusaInstaller/master/seed.ini"
 #define AppRepoUrl "https://github.com/pymedusa/Medusa.git"
+#define AppSize 246784000
 
 [Setup]
 AppId={#AppId}
 AppName={#AppName}
-AppVersion={#AppVersion}
-AppVerName={#AppName} ({#AppVersion})
+AppVerName={#AppName}
 AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}
@@ -38,11 +38,20 @@ OutputBaseFilename={#AppName}Installer
 SolidCompression=yes
 UninstallDisplayIcon={app}\Installer\medusa.ico
 UninstallFilesDir={app}\Installer
-ExtraDiskSpaceRequired=524288000
 SetupIconFile=assets\medusa.ico
 WizardImageFile=assets\Wizard.bmp
 WizardSmallImageFile=assets\WizardSmall.bmp
 WizardStyle=modern
+WizardResizable=no
+
+[Types]
+Name: "full"; Description: "Full installation"
+Name: "custom"; Description: "Custom installation"; Flags: iscustom
+
+[Components]
+Name: "application"; Description: {#AppName}; ExtraDiskSpaceRequired: {#AppSize}; Types: "full custom"; Flags: fixed
+Name: "python"; Description: "Python"; ExtraDiskSpaceRequired: 36000000; Types: "full custom"
+Name: "git"; Description: "Git"; ExtraDiskSpaceRequired: 55000000; Types: "full custom"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -58,18 +67,18 @@ Source: "utils\nssm64.exe"; DestDir: "{app}\Installer"; DestName: "nssm.exe"; Ch
 Name: "{app}\Data"
 
 [Icons]
-Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"
+;Desktop
 Name: "{commondesktop}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"; Tasks: desktopicon
-Name: "{group}\{cm:ProgramOnTheWeb,{#AppName}}"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\medusa.ico"; Flags: excludefromshowinnewinstall
-Name: "{group}\{#AppName} on GitHub"; Filename: "{#AppRepoUrl}"; IconFilename: "{app}\Installer\github.ico"; Flags: excludefromshowinnewinstall
+;Start menu
+Name: "{group}\{#AppName}"; Filename: "http://localhost:{code:GetWebPort}/"; IconFilename: "{app}\Installer\medusa.ico"
+Name: "{group}\{#AppName} on GitHub"; Filename: "{#AppURL}"; IconFilename: "{app}\Installer\github.ico"; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStartIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
 Name: "{#ServiceStopIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "stop ""{#AppServiceName}"""; Flags: excludefromshowinnewinstall
-Name: "{group}\Edit {#AppName} Service"; Filename: "{app}\Installer\nssm.exe"; Parameters: "edit ""{#AppServiceName}"""; AfterInstall: ModifyServiceLinks; Flags: excludefromshowinnewinstall
+Name: "{#ServiceEditIcon}"; Filename: "{app}\Installer\nssm.exe"; Parameters: "edit ""{#AppServiceName}"""; AfterInstall: ModifyServiceLinks; Flags: excludefromshowinnewinstall
 
 [Run]
 ;Medusa
-Filename: "{app}\Git\cmd\git.exe"; Parameters: "clone {#AppRepoUrl} ""{app}\{#AppName}"""; StatusMsg: "Installing {#AppName}..."
-;Filename: "xcopy.exe"; Parameters: """C:\MedusaInstaller\Medusa"" ""{app}\{#AppName}"" /E /I /H /Y"; Flags: runminimized; StatusMsg: "Installing {#AppName}..."
+Filename: "{code:GetGitExecutable}"; Parameters: "clone ""{param:LOCALREPO|{#AppRepoUrl}}"" ""{app}\{#AppName}"" --branch {code:GetBranch}"; StatusMsg: "Installing {#AppName}..."
 ;Service
 Filename: "{app}\Installer\nssm.exe"; Parameters: "start ""{#AppServiceName}"""; Flags: runhidden; BeforeInstall: CreateService; StatusMsg: "Starting {#AppName} service..."
 ;Open
@@ -87,9 +96,17 @@ Type: filesandordirs; Name: "{app}\{#AppName}"
 Type: dirifempty; Name: "{app}"
 
 [Messages]
-WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.%n%nNOTE: This installer intentionally ignores any existing installations of Git or Python you might already have installed on your system. If you prefer to use those versions, we recommend installing [name] manually.
+WelcomeLabel2=This will install [name/ver] on your computer.%n%nYou will need Internet connectivity in order to download the required packages.
+SelectComponentsLabel2=Select the components you want to install; clear the components you do not want to install. Click Next when you are ready to continue. \
+  %n%nPlease note: \
+  %n  By default, this installer provides the dependencies required to run [name]. \
+  %n  If you have Git or Python already installed on your system, and you would prefer to use those versions, \
+  %n  you may deselect the dependencies you already have and provide a path to the already-installed versions.
 AboutSetupNote=MedusaInstaller {#MedusaInstallerVersion}
 BeveledLabel=MedusaInstaller {#MedusaInstallerVersion}
+
+[INI]
+Filename: "{app}\Data\config.ini"; Section: "General"; Key: "web_port"; String: "{code:GetWebPort}"; Flags: createkeyifdoesntexist
 
 [Code]
 type
@@ -99,6 +116,21 @@ type
     Filename: String;
     Size:     Integer;
     SHA1:     String;
+    Version:  String;
+  end;
+
+  TBrowseOptions = record
+    Caption: TNewStaticText;
+    Path: TNewStaticText;
+    Browse: TNewButton;
+  end;
+
+  TInstallOptions = record
+    Page: TWizardPage;
+    WebPort: TNewEdit;
+    Branch: TNewCheckListBox;
+    Python: TBrowseOptions;
+    Git: TBrowseOptions;
   end;
 
   IShellLinkW = interface(IUnknown)
@@ -165,7 +197,7 @@ var
   SeedDownloadPageId, DependencyDownloadPageId: Integer;
   PythonDep, GitDep: TDependency;
   InstallDepPage: TOutputProgressWizardPage;
-  OptionsPage: TInputQueryWizardPage;
+  InstallOptions: TInstallOptions;
   // Uninstall variables
   UninstallRemoveData: Boolean;
 
@@ -209,39 +241,85 @@ begin
   end;
 end;
 
-procedure ParseDependency(var Dependency: TDependency; Name, SeedFile: String);
+function GetDependencyVersion(Dependency: TDependency): String;
 var
-  LocalFile: String;
+  StartIndex: Integer;
+begin
+  Result := Dependency.Filename;
+  // Handle Git dependency
+  if Pos('git', Lowercase(Dependency.Name)) <> 0 then begin
+    // --> MinGit-2.22.0-32-bit.zip
+    // --> MinGit-2.22.0-64-bit.zip
+    StartIndex := Pos('-', Result) + 1;
+    Result := Copy(Result, StartIndex, Length(Result));
+    // <-- 2.22.0-64-bit.zip
+    StartIndex := Pos('-', Result);
+    Delete(Result, StartIndex, Length(Result));
+    // <-- 2.22.0
+  // Handle Python dependency
+  end else if Pos('python', Lowercase(Dependency.Name)) <> 0 then begin
+    // --> pythonx86.3.7.3.nupkg
+    // --> python.3.7.3.nupkg
+    StartIndex := Pos('.', Result) + 1;
+    Result := Copy(Result, StartIndex, Length(Result));
+    // <-- 3.7.3.nupkg
+    StartIndex := Pos('nupkg', Result) - 1;
+    Delete(Result, StartIndex, Length(Result));
+    // <-- 3.7.3
+  end else begin
+    Result := '';
+  end;
+end;
+
+procedure UpdateComponentsPageDependencyVersions();
+var
+  Idx: Integer;
+  Version: String;
+begin
+  for Idx := 0 to WizardForm.ComponentsList.Items.Count - 1 do
+  begin
+    Version := '';
+
+    if Pos('python', Lowercase(WizardForm.ComponentsList.ItemCaption[Idx])) <> 0 then begin
+      Version := ' (v' + PythonDep.Version + ')';
+    end;
+
+    if Pos('git', Lowercase(WizardForm.ComponentsList.ItemCaption[Idx])) <> 0 then begin
+      Version := ' (v' + GitDep.Version + ')';
+    end;
+
+    WizardForm.ComponentsList.ItemCaption[Idx] := WizardForm.ComponentsList.ItemCaption[Idx] + Version;
+  end;
+end;
+
+procedure ParseDependency(var Dependency: TDependency; Name, SeedFile: String);
 begin
   Dependency.Name     := Name;
   Dependency.URL      := GetIniString(Name, 'url', '', SeedFile)
-  Dependency.Filename := Dependency.URL
+  Dependency.Filename := GetIniString(Name, 'filename', '', SeedFile)
   Dependency.Size     := GetIniInt(Name, 'size', 0, 0, MaxInt, SeedFile)
   Dependency.SHA1     := GetIniString(Name, 'sha1', '', SeedFile)
+  Dependency.Version  := '';
 
   if (Dependency.URL = '') or (Dependency.Size = 0) or (Dependency.SHA1 = '') then begin
     AbortInstallation('Error parsing dependency information for ' + Name + '.')
   end;
 
-  while Pos('/', Dependency.Filename) <> 0 do begin
-    Delete(Dependency.Filename, 1, Pos('/', Dependency.Filename))
+  // If a filename was not supplied, use the last part of the URL as the filename
+  if Dependency.Filename = '' then begin
+    Dependency.Filename := Dependency.URL
+    while Pos('/', Dependency.Filename) <> 0 do begin
+      Delete(Dependency.Filename, 1, Pos('/', Dependency.Filename))
+    end;
   end;
 
-  if LocalFilesDir <> '' then begin
-    LocalFile := LocalFilesDir + '\' + Dependency.Filename
-  end;
-  if (LocalFile <> '') and (FileExists(LocalFile)) then begin
-    FileCopy(LocalFile, ExpandConstant('{tmp}\') + Dependency.Filename, True)
-  end else begin
-    idpAddFileSize(Dependency.URL, ExpandConstant('{tmp}\') + Dependency.Filename, Dependency.Size)
-  end
+  Dependency.Version := GetDependencyVersion(Dependency);
 end;
 
 procedure ParseSeedFile();
 var
   SeedFile: String;
   Arch: String;
-  DownloadPage: TWizardPage;
 begin
   SeedFile := ExpandConstant('{tmp}\installer.ini')
 
@@ -255,16 +333,6 @@ begin
 
   ParseDependency(PythonDep,    'Python.'    + Arch, SeedFile)
   ParseDependency(GitDep,       'Git.'       + Arch, SeedFile)
-
-  DependencyDownloadPageId := idpCreateDownloadForm(wpPreparing)
-  DownloadPage := PageFromID(DependencyDownloadPageId)
-  DownloadPage.Caption := 'Downloading Dependencies'
-  DownloadPage.Description := ExpandConstant('Setup is downloading {#AppName} dependencies...')
-
-  idpSetOption('DetailedMode', '1')
-  idpSetOption('DetailsButton', '0')
-
-  idpConnectControls()
 end;
 
 procedure InitializeSeedDownload();
@@ -292,11 +360,10 @@ begin
   if not IsRemote then begin
     FileCopy(Seed, ExpandConstant('{tmp}\installer.ini'), False)
     ParseSeedFile()
+    UpdateComponentsPageDependencyVersions()
   end else begin
     // Download the installer seed INI file
-    // I'm adding a dummy size here otherwise the installer crashes (divide by 0)
-    // when runnning in silent mode, a bug in IDP maybe?
-    idpAddFileSize(Seed, ExpandConstant('{tmp}\installer.ini'), 1024)
+    idpAddFile(Seed, ExpandConstant('{tmp}\installer.ini'))
 
     SeedDownloadPageId := idpCreateDownloadForm(wpWelcome)
     DownloadPage := PageFromID(SeedDownloadPageId)
@@ -325,30 +392,110 @@ begin
   end;
 end;
 
+function GetPythonExecutable(Param: String): String;
+begin
+  if WizardIsComponentSelected('python') then begin
+    Result := ExpandConstant('{app}\Python\python.exe')
+  end else begin
+    Result := InstallOptions.Python.Path.Caption
+  end;
+end;
+
+function GetGitExecutable(Param: String): String;
+begin
+  if WizardIsComponentSelected('git') then begin
+    Result := ExpandConstant('{app}\Git\cmd\git.exe')
+  end else begin
+    Result := InstallOptions.Git.Path.Caption
+  end;
+end;
+
 function GetWebPort(Param: String): String;
 begin
-  Result := OptionsPage.Values[0]
+  Result := InstallOptions.WebPort.Text
+end;
+
+function GetBranch(Param: String): String;
+var
+  Idx: Integer;
+begin
+  for Idx := 0 to InstallOptions.Branch.Items.Count - 1 do
+  begin
+    if InstallOptions.Branch.Checked[Idx] then begin
+      Result := InstallOptions.Branch.ItemCaption[Idx]
+      break;
+    end;
+  end;
+end;
+
+function ConfigureCustomPython(Python: String): String;
+var
+  VirtualEnvPath: String;
+  ResultCode: Integer;
+begin
+  VirtualEnvPath := ExpandConstant('{app}\Python')
+  Result := VirtualEnvPath + '\Scripts\python.exe'
+
+  Exec(Python, '-m venv "'+VirtualEnvPath+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  if ResultCode = 0 then begin
+    // Success using venv (Included in Python >= 3.3)
+    exit;
+  end;
+
+  // Fall back to installing latest `virtualenv` using Pip and using that.
+  // Some versions of Pip for Python 2.7 on Windows have an issue where having a progress bar can fail the install.
+  Exec(Python, '-m pip install --progress-bar off --upgrade virtualenv', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  if ResultCode = 0 then begin
+    // Install/Upgrade successful
+    Exec(Python, '-m virtualenv "'+VirtualEnvPath+'"', '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+    if ResultCode = 0 then begin
+      // Success using virtualenv (external package)
+      exit;
+    end;
+  end;
+
+  // Fall back to non-virtualenv (not recommended).
+  Result := Python;
+  MsgBox(
+    'Failed to configure custom Python:' #13#10#13#10 'Unable to install/upgrade or configure virtualenv.' + \
+    #13#10 'Falling back to using the custom Python executable as-is (not recommended).',
+    mbError, MB_OK
+  );
 end;
 
 procedure CreateService();
 var
+  PythonExecutable: String;
+  GitPath: String;
   Nssm: String;
   ResultCode: Integer;
   OldProgressString: String;
   WindowsVersion: TWindowsVersion;
 begin
+  PythonExecutable := GetPythonExecutable('')
+  GitPath := ExtractFileDir(GetGitExecutable(''))
+
+  OldProgressString := WizardForm.StatusLabel.Caption;
+
+  // Python was not selected, let's isolate this install using v(irtual)env
+  if not WizardIsComponentSelected('python') then begin
+    WizardForm.StatusLabel.Caption := ExpandConstant('Configuring virtual environment for custom Python...');
+    // Returns the path to the new virtual env's Python executable.
+    PythonExecutable := ConfigureCustomPython(PythonExecutable);
+  end;
+
   Nssm := ExpandConstant('{app}\Installer\nssm.exe')
   GetWindowsVersionEx(WindowsVersion);
 
-  OldProgressString := WizardForm.StatusLabel.Caption;
   WizardForm.StatusLabel.Caption := ExpandConstant('Installing {#AppName} service...')
 
-  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "{app}\Python\python.exe" """{app}\{#AppName}\start.py""" --nolaunch --port='+GetWebPort('')+' --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  // Keep extra quotes; See "Quoting issues" on https://nssm.cc/usage
+  Exec(Nssm, ExpandConstant('install "{#AppServiceName}" "'+PythonExecutable+'" """{app}\{#AppName}\start.py""" --nolaunch --datadir="""{app}\Data"""'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppDirectory "{app}\Data"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" Description "{#AppServiceDescription}"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodSkip 6'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppStopMethodConsole 20000'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH={app}\Git\cmd;%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppEnvironmentExtra "PATH='+GitPath+';%PATH%"'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
 
   if WindowsVersion.NTPlatform and (WindowsVersion.Major = 10) and (WindowsVersion.Minor = 0) and (WindowsVersion.Build > 14393) then begin
     Exec(Nssm, ExpandConstant('set "{#AppServiceName}" AppNoConsole 1'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
@@ -386,12 +533,6 @@ var
   PythonPath: String;
 begin
   PythonPath := ExpandConstant('{app}\Python')
-
-  DelTree(PythonPath + '\*.msi',        False, True, False)
-  DelTree(PythonPath + '\Doc',          True,  True, True)
-  DelTree(PythonPath + '\Lib\test\*.*', False, True, True)
-  DelTree(PythonPath + '\Scripts',      True,  True, True)
-  DelTree(PythonPath + '\tcl',          True,  True, True)
   DelTree(PythonPath + '\Tools',        True,  True, True)
 end;
 
@@ -400,9 +541,8 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Python...', '')
-  ExtractTemporaryFile('7za.exe')
-  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\nuget-python"', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec('xcopy.exe', ExpandConstant('"{tmp}\nuget-python\tools" "{app}\Python" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{app}" tools', 'filename', PythonDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  RenameFile(ExpandConstant('{app}\tools'), ExpandConstant('{app}\Python'))
   CleanPython()
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
@@ -412,9 +552,7 @@ var
   ResultCode: Integer;
 begin
   InstallDepPage.SetText('Installing Git...', '')
-  ExtractTemporaryFile('7za.exe')
-  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{tmp}\mingit"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
-  Exec('xcopy.exe', ExpandConstant('"{tmp}\mingit" "{app}\Git" /E /I /H /Y'), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
+  Exec(ExpandConstant('{tmp}\7za.exe'), ExpandConstantEx('x "{tmp}\{filename}" -o"{app}\Git"', 'filename', GitDep.Filename), '', SW_HIDE, ewWaitUntilTerminated, ResultCode)
   InstallDepPage.SetProgress(InstallDepPage.ProgressBar.Position+1, InstallDepPage.ProgressBar.Max)
 end;
 
@@ -434,25 +572,124 @@ function VerifyDependencies(): Boolean;
 begin
   Result := True
 
-  Result := Result and VerifyDependency(PythonDep)
-  Result := Result and VerifyDependency(GitDep)
+  if WizardIsComponentSelected('python') then begin
+    Result := Result and VerifyDependency(PythonDep)
+  end;
+  if WizardIsComponentSelected('git') then begin
+    Result := Result and VerifyDependency(GitDep)
+  end;
+end;
+
+procedure OnPythonBrowseClick(Sender: TObject);
+var
+  Filename: String;
+  FilenameLength: Integer;
+begin
+  // Browse for a custom Python executable
+  if GetOpenFilename('Path to Python executable:', Filename, '', 'Python executable (python.exe)|python.exe', 'python.exe') then begin
+    FilenameLength := Length(Filename);
+    if Copy(Filename, FilenameLength - Length('\python.exe') + 1, FilenameLength) = '\python.exe' then begin
+      InstallOptions.Python.Path.Caption := Filename;
+    end;
+  end;
+end;
+
+procedure OnGitBrowseClick(Sender: TObject);
+var
+  Filename: String;
+  FilenameLength: Integer;
+begin
+  // Browse for a custom Git executable
+  if GetOpenFilename('Path to Git executable:', Filename, '', 'Git executable (git.exe)|git.exe', 'git.exe') then begin
+    FilenameLength := Length(Filename);
+    if Copy(Filename, FilenameLength - Length('\git.exe') + 1, FilenameLength) = '\git.exe' then begin
+      InstallOptions.Git.Path.Caption := Filename;
+    end;
+  end;
+end;
+
+procedure AppendDependency(Dependency: TDependency);
+var
+  LocalFile: String;
+  DownloadTarget: String;
+begin
+  // Add the dependency to the download list (or use it from a local file)
+  if LocalFilesDir <> '' then begin
+    LocalFile := LocalFilesDir + '\' + Dependency.Filename
+  end;
+
+  DownloadTarget := ExpandConstant('{tmp}\') + Dependency.Filename
+  if (LocalFile <> '') and (FileExists(LocalFile)) then begin
+    FileCopy(LocalFile, DownloadTarget, True)
+  end else begin
+    idpAddFileSize(Dependency.URL, DownloadTarget, Dependency.Size)
+  end;
+end;
+
+procedure PrepareDependencies();
+var
+  DownloadPage: TWizardPage;
+  PythonSelected, GitSelected: Boolean;
+begin
+  PythonSelected := WizardIsComponentSelected('python')
+  GitSelected := WizardIsComponentSelected('git')
+
+  if not (PythonSelected or GitSelected) then begin
+    // No dependencies selected, skip creating a "Downloading Dependencies" page
+    exit;
+  end;
+
+  if PythonSelected then AppendDependency(PythonDep);
+  if GitSelected then AppendDependency(GitDep);
+
+  DependencyDownloadPageId := idpCreateDownloadForm(wpPreparing)
+  DownloadPage := PageFromID(DependencyDownloadPageId)
+  DownloadPage.Caption := 'Downloading Dependencies'
+  DownloadPage.Description := ExpandConstant('Setup is downloading {#AppName} dependencies...')
+
+  idpSetOption('DetailedMode', '1')
+  idpSetOption('DetailsButton', '0')
+
+  idpConnectControls()
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   if ErrorMessage <> '' then begin
     Result := ErrorMessage
+    exit;
   end;
+
+  PrepareDependencies();
 end;
 
 procedure InstallDependencies();
+var
+  PythonSelected: Boolean;
+  GitSelected: Boolean;
+  MaxProgress: Integer;
 begin
+  PythonSelected := WizardIsComponentSelected('python')
+  GitSelected := WizardIsComponentSelected('git')
+
+  if not (PythonSelected or GitSelected) then begin
+    exit;
+  end;
+
   try
     InstallDepPage.Show
-    InstallDepPage.SetProgress(0, 6)
+
+    MaxProgress := 0;
+    // Stages for each dependency - Verify + Install
+    if PythonSelected then MaxProgress := MaxProgress + 2;
+    if GitSelected then MaxProgress := MaxProgress + 2;
+
+    InstallDepPage.SetProgress(0, MaxProgress)
+
     if VerifyDependencies() then begin
-      InstallPython()
-      InstallGit()
+      ExtractTemporaryFile('7za.exe')
+      if PythonSelected then InstallPython();
+      if GitSelected then InstallGit();
     end else begin
       ErrorMessage := 'There was an error installing the required dependencies.'
     end;
@@ -462,6 +699,8 @@ begin
 end;
 
 procedure InitializeWizard();
+var
+  WebPortCaption: TNewStaticText;
 begin
   InitializeSeedDownload()
 
@@ -469,9 +708,89 @@ begin
 
   InstallDepPage := CreateOutputProgressPage('Installing Dependencies', ExpandConstant('Setup is installing {#AppName} dependencies...'));
 
-  OptionsPage := CreateInputQueryPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'), '');
-  OptionsPage.Add(ExpandConstant('{#AppName} Web Server Port:'), False)
-  OptionsPage.Values[0] := ExpandConstant('{#DefaultPort}')
+  // Custom Options Page
+  InstallOptions.Page := CreateCustomPage(wpSelectProgramGroup, 'Additional Options', ExpandConstant('Additional {#AppName} configuration options'));
+
+  WebPortCaption := TNewStaticText.Create(InstallOptions.Page);
+  WebPortCaption.Anchors := [akLeft, akRight];
+  WebPortCaption.Caption := ExpandConstant('{#AppName} Web Server Port:');
+  WebPortCaption.AutoSize := True;
+  WebPortCaption.Parent := InstallOptions.Page.Surface;
+
+  InstallOptions.WebPort := TNewEdit.Create(InstallOptions.Page);
+  InstallOptions.WebPort.Top := WebPortCaption.Top + WebPortCaption.Height + ScaleY(8);
+  InstallOptions.WebPort.Text := ExpandConstant('{#DefaultPort}');
+  InstallOptions.WebPort.Parent := InstallOptions.Page.Surface;
+  InstallOptions.WebPort.Width := ScaleX(50);
+
+  InstallOptions.Branch := TNewCheckListBox.Create(InstallOptions.Page);
+  InstallOptions.Branch.Top := InstallOptions.WebPort.Top + InstallOptions.WebPort.Height;
+  InstallOptions.Branch.Width := ScaleX(50);
+  InstallOptions.Branch.Height := ScaleY(70);
+  InstallOptions.Branch.Anchors := [akLeft, akRight];
+  InstallOptions.Branch.BorderStyle := bsNone;
+  InstallOptions.Branch.ParentColor := True;
+  InstallOptions.Branch.MinItemHeight := WizardForm.TasksList.MinItemHeight;
+  InstallOptions.Branch.ShowLines := False;
+  InstallOptions.Branch.WantTabs := True;
+  InstallOptions.Branch.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Branch.AddGroup('Branch:', '', 0, nil);
+  InstallOptions.Branch.AddRadioButton('master', '(stable)', 0, True, True, nil);
+  InstallOptions.Branch.AddRadioButton('develop', '(development)', 0, False, True, nil);
+
+  InstallOptions.Python.Caption := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Python.Caption.Anchors := [akLeft, akRight];
+  InstallOptions.Python.Caption.Top := InstallOptions.Branch.Top + InstallOptions.Branch.Height + ScaleY(8);
+  InstallOptions.Python.Caption.Caption := 'Path to Python executable:';
+  InstallOptions.Python.Caption.AutoSize := True;
+  InstallOptions.Python.Caption.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Caption.Visible := False;
+
+  InstallOptions.Python.Path := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Python.Path.Anchors := [akLeft];
+  InstallOptions.Python.Path.Top := InstallOptions.Python.Caption.Top;
+  InstallOptions.Python.Path.Left := InstallOptions.Python.Caption.Left + InstallOptions.Python.Caption.Width + ScaleX(2);
+  InstallOptions.Python.Path.AutoSize := True;
+  InstallOptions.Python.Path.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Path.Caption := '';
+  InstallOptions.Python.Path.Visible := False;
+
+  InstallOptions.Python.Browse := TNewButton.Create(InstallOptions.Page);
+  InstallOptions.Python.Browse.Anchors := [akLeft];
+  InstallOptions.Python.Browse.Top := InstallOptions.Python.Path.Top + InstallOptions.Python.Path.Height;
+  InstallOptions.Python.Browse.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Python.Browse.Width := ScaleX(75);
+  InstallOptions.Python.Browse.Height := ScaleY(23);
+  InstallOptions.Python.Browse.Caption := 'Browse...';
+  InstallOptions.Python.Browse.Visible := False;
+  InstallOptions.Python.Browse.OnClick := @OnPythonBrowseClick;
+
+  InstallOptions.Git.Caption := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Git.Caption.Anchors := [akLeft, akRight];
+  InstallOptions.Git.Caption.Top := InstallOptions.Python.Browse.Top + InstallOptions.Python.Browse.Height + ScaleY(8);
+  InstallOptions.Git.Caption.Caption := 'Path to Git executable:';
+  InstallOptions.Git.Caption.AutoSize := True;
+  InstallOptions.Git.Caption.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Caption.Visible := False;
+
+  InstallOptions.Git.Path := TNewStaticText.Create(InstallOptions.Page);
+  InstallOptions.Git.Path.Anchors := [akLeft];
+  InstallOptions.Git.Path.Top := InstallOptions.Git.Caption.Top;
+  InstallOptions.Git.Path.Left := InstallOptions.Git.Caption.Left + InstallOptions.Git.Caption.Width + ScaleX(2);
+  InstallOptions.Git.Path.AutoSize := True;
+  InstallOptions.Git.Path.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Path.Caption := '';
+  InstallOptions.Git.Path.Visible := False;
+
+  InstallOptions.Git.Browse := TNewButton.Create(InstallOptions.Page);
+  InstallOptions.Git.Browse.Anchors := [akLeft];
+  InstallOptions.Git.Browse.Top := InstallOptions.Git.Path.Top + InstallOptions.Git.Path.Height;
+  InstallOptions.Git.Browse.Parent := InstallOptions.Page.Surface;
+  InstallOptions.Git.Browse.Width := ScaleX(75);
+  InstallOptions.Git.Browse.Height := ScaleY(23);
+  InstallOptions.Git.Browse.Caption := 'Browse...';
+  InstallOptions.Git.Browse.Visible := False;
+  InstallOptions.Git.Browse.OnClick := @OnGitBrowseClick;
 end;
 
 function ShellLinkRunAsAdmin(LinkFilename: String): Boolean;
@@ -509,6 +828,7 @@ procedure ModifyServiceLinks();
 begin
   ShellLinkRunAsAdmin(ExpandConstant('{#ServiceStartIcon}.lnk'))
   ShellLinkRunAsAdmin(ExpandConstant('{#ServiceStopIcon}.lnk'))
+  ShellLinkRunAsAdmin(ExpandConstant('{#ServiceEditIcon}.lnk'))
 end;
 
 function InitializeSetup(): Boolean;
@@ -534,16 +854,47 @@ function NextButtonClick(CurPageID: Integer): Boolean;
 var
   Port: Integer;
 begin
-  Result := True
+  Result := True;
 
   if CurPageID = SeedDownloadPageId then begin
     ParseSeedFile()
-  end else if CurPageId = OptionsPage.ID then begin
+    UpdateComponentsPageDependencyVersions()
+  end else if CurPageId = wpSelectComponents then begin
+    // Make options visible depending on component selection
+    InstallOptions.Python.Caption.Visible := not WizardIsComponentSelected('python');
+    InstallOptions.Python.Path.Visible := not WizardIsComponentSelected('python');
+    InstallOptions.Python.Path.Caption := '';
+    InstallOptions.Python.Browse.Visible := not WizardIsComponentSelected('python');
+
+    InstallOptions.Git.Caption.Visible := not WizardIsComponentSelected('git');
+    InstallOptions.Git.Path.Visible := not WizardIsComponentSelected('git');
+    InstallOptions.Git.Path.Caption := '';
+    InstallOptions.Git.Browse.Visible := not WizardIsComponentSelected('git');
+  end else if CurPageId = InstallOptions.Page.ID then begin
     // Make sure valid port is specified
-    Port := StrToIntDef(OptionsPage.Values[0], 0)
+    Port := StrToIntDef(GetWebPort(''), 0)
     if (Port = 0) or (Port < MinPort) or (Port > MaxPort) then begin
       MsgBox(FmtMessage('Please specify a valid port between %1 and %2.', [IntToStr(MinPort), IntToStr(MaxPort)]), mbError, 0)
       Result := False;
+      exit;
+    end;
+
+    // Make sure custom Python path is supplied
+    if not WizardIsComponentSelected('python') then begin
+      if InstallOptions.Python.Path.Caption = '' then begin
+        MsgBox('Please specify the path to the Python executable.', mbError, 0)
+        Result := False;
+        exit;
+      end;
+    end;
+
+    // Make sure custom Git path is supplied
+    if not WizardIsComponentSelected('git') then begin
+      if InstallOptions.Git.Path.Caption = '' then begin
+        MsgBox('Please specify the path to the Git executable.', mbError, 0)
+        Result := False;
+        exit;
+      end;
     end;
   end;
 end;
@@ -576,19 +927,64 @@ begin
   end;
 end;
 
-function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
-  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+function Append(const Lines, S, NewLine: String): String;
 begin
-  Result := MemoDirInfo + NewLine + NewLine + \
-            MemoGroupInfo + NewLine + NewLine + \
-            'Download and install dependencies:' + NewLine + \
-            Space + 'Git' + NewLine + \
-            Space + 'Python' + NewLine + NewLine + \
-            'Web server port:' + NewLine + Space + GetWebPort('')
-
-  if MemoTasksInfo <> '' then begin
-    Result := Result + NewLine + NewLine + MemoTasksInfo
+  Result := S;
+  if Lines <> '' then begin
+    if Result <> '' then
+      Result := Result + NewLine + NewLine;
+    Result := Result + Lines;
   end;
+end;
+
+procedure InjectDependencyVersions(var MemoComponentsInfo: String);
+var
+  SearchStr: String;
+  Position: Integer;
+begin
+  if MemoComponentsInfo = '' then begin
+    exit;
+  end;
+
+  // Inject dependency versions into MemoComponentsInfo
+  if WizardIsComponentSelected('git') and (GitDep.Version <> '') then begin
+    SearchStr := '   Git'
+    Position := Pos(SearchStr, MemoComponentsInfo)
+    if Position <> 0 then begin
+      Insert(' (v' + GitDep.Version + ')', MemoComponentsInfo, Position + Length(SearchStr));
+    end;
+  end;
+
+  if WizardIsComponentSelected('python') and (PythonDep.Version <> '') then begin
+    SearchStr := '   Python'
+    Position := Pos(SearchStr, MemoComponentsInfo)
+    if Position <> 0 then begin
+      Insert(' (v' + PythonDep.Version + ')', MemoComponentsInfo, Position + Length(SearchStr));
+    end;
+  end;
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo,
+  MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+var
+  S: String;
+begin
+  S := '';
+
+  S := Append(MemoDirInfo, S, NewLine);
+  S := Append(MemoGroupInfo, S, NewLine);
+  // S := Append(MemoTypeInfo, S, NewLine);
+
+  InjectDependencyVersions(MemoComponentsInfo);
+
+  S := Append(MemoComponentsInfo, S, NewLine);
+
+  S := Append('Web server port:' + NewLine + Space + GetWebPort(''), S, NewLine);
+  S := Append('Branch: ' + NewLine + Space + GetBranch(''), S, NewLine);
+
+  S := Append(MemoTasksInfo, S, NewLine);
+
+  Result := S;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);

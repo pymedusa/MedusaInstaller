@@ -47,8 +47,16 @@ before_build:
         Write-Warning "$message`n$details" `
       }
 
+  - ps: |-
+      $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
+        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
+        % { $($_.matches.groups[1]).Value };
+
 build_script:
-  - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /Q Medusa.iss'
+  # Set output file to: "Output\MedusaInstaller-[commit_hash[:7]].exe"
+  - ps: $env:OutputFile = "MedusaInstaller-" + $env:APPVEYOR_REPO_COMMIT.Substring(0, 7);
+  - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /O"Output" /F"$env:OutputFile" /Q Medusa.iss;'
+  - ps: $env:InstallerFile = "Output\${env:OutputFile}.exe";
 
 test: off
 
@@ -69,8 +77,8 @@ notifications:
       </ul>
 
 artifacts:
-  - path: Output\MedusaInstaller.exe
-    name: MedusaInstaller.exe
+  - path: $(InstallerFile)
+    name: MedusaInstaller-$(ReleaseVersion).exe
 
 environment:
   GH_TOKEN:
@@ -91,11 +99,6 @@ before_deploy:
           -Details "$details"; `
         throw "$message`n$details" `
       }
-
-  - ps: |-
-      $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
-        -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
-        % { $($_.matches.groups[1]).Value };
 
   - ps: |-
       $headers = @{
@@ -121,6 +124,6 @@ deploy:
     force_update: true         # replaces current release
     draft: true                # release as a draft
     auth_token: $(GH_TOKEN)
-    artifact: MedusaInstaller.exe
+    artifact: MedusaInstaller-$(ReleaseVersion).exe
     on:
       branch: master           # release from master branch only
