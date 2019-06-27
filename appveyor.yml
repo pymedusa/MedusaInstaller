@@ -19,42 +19,45 @@ install:
   - ps: choco install -y --no-progress InnoSetup
 
 before_build:
-  - ps: |-
+  - ps: |
       $env:InstallerVersion = Select-String -Path .\Medusa.iss `
         -Pattern '^#define\sInstallerVersion\s([\d]+)' | `
         % { $($_.matches.groups[1]).Value };
 
-  - ps: |-
+  - ps: |
       $env:SeedVersion = Select-String -Path .\seed.ini `
         -Pattern '^Version=([\d]+)' | `
         % { $($_.matches.groups[1]).Value };
 
-  - ps: |-
-      If ( `
-        $env:InstallerVersion -ne $env:SeedVersion `
-        -and $env:APPVEYOR_REPO_BRANCH -eq "master" `
-        # -and -not $env:APPVEYOR_PULL_REQUEST_NUMBER `
-      ) { `
+  - ps: |
+      If ($env:InstallerVersion -ne $env:SeedVersion -and $env:APPVEYOR_REPO_BRANCH -eq "master") {
         $message = "Seed version differs from version in source code!";
         $details = `
-          "`tVersion in source code: $env:InstallerVersion`n" + `
-          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "`tVersion in source code: $env:InstallerVersion`n" +
+          "`tVersion in seed file:   $env:SeedVersion`n" +
           "Make sure to update the value before pushing to master.";
         Add-AppveyorMessage `
           -Message "$message" `
           -Category Warning `
-          -Details "$details"; `
-        Write-Warning "$message`n$details" `
+          -Details "$details";
+        Write-Warning "$message`n$details";
       }
 
-  - ps: |-
+  - ps: |
       $env:ReleaseVersion = Select-String -Path .\Medusa.iss `
         -Pattern '^#define\sMedusaInstallerVersion\s"v([\d.]+)"' | `
         % { $($_.matches.groups[1]).Value };
 
 build_script:
-  # Set output file to: "Output\MedusaInstaller-[commit_hash[:7]].exe"
-  - ps: $env:OutputFile = "MedusaInstaller-" + $env:APPVEYOR_REPO_COMMIT.Substring(0, 7);
+  # On pull requests, set output file to: "Output\MedusaInstaller-[commit_hash[:7]].exe"
+  # On other commits, set output file to: "Output\MedusaInstaller-[release_version].exe"
+  - ps: |
+      If ($env:APPVEYOR_PULL_REQUEST_NUMBER) {
+        $FileVersion = $env:APPVEYOR_REPO_COMMIT.Substring(0, 7);
+      } Else {
+        $FileVersion = $env:ReleaseVersion;
+      }
+      $env:OutputFile = "MedusaInstaller-$FileVersion";
   - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /O"Output" /F"$env:OutputFile" /Q Medusa.iss;'
   - ps: $env:InstallerFile = "Output\${env:OutputFile}.exe";
 
@@ -78,43 +81,39 @@ notifications:
 
 artifacts:
   - path: $(InstallerFile)
-    name: MedusaInstaller-$(ReleaseVersion).exe
+    name: MedusaInstaller
 
 environment:
   GH_TOKEN:
     secure: epQRjuQ/hfy8BkTBL3NYVnmkFnsVlYEDKX5XB7RcY2Ort3Fo2sXX8LZdW+sNyRa3
 
 before_deploy:
-  - ps: |-
-      If ($env:InstallerVersion -ne $env:SeedVersion) `
-      { `
+  - ps: |
+      If ($env:InstallerVersion -ne $env:SeedVersion) {
         $message = "Seed version differs from version in source code!";
         $details = `
-          "`tVersion in source code: $env:InstallerVersion`n" + `
-          "`tVersion in seed file:   $env:SeedVersion`n" + `
+          "`tVersion in source code: $env:InstallerVersion`n" +
+          "`tVersion in seed file:   $env:SeedVersion`n" +
           "You must to update the value before releasing.";
         Add-AppveyorMessage `
           -Message "$message" `
           -Category Error `
-          -Details "$details"; `
-        throw "$message`n$details" `
+          -Details "$details";
+        throw "$message`n$details";
       }
 
-  - ps: |-
+  - ps: |
       $headers = @{
         "Authorization" = "Bearer $env:GH_TOKEN"
         "Content-type" = "application/json"
-      }; `
+      };
       $LatestGitHubRelease = Invoke-RestMethod `
         -Uri "https://api.github.com/repos/$env:APPVEYOR_REPO_NAME/releases/latest" `
         -Headers $headers `
-        -Method GET; `
-      If ( `
-        $env:ReleaseVersion -eq $LatestGitHubRelease.tag_name `
-        -and -not $LatestGitHubRelease.draft `
-      ) { `
-        Write-Warning "Not deploying because release $env:ReleaseVersion is already published."; `
-        Exit-AppveyorBuild `
+        -Method GET;
+      If ($env:ReleaseVersion -eq $LatestGitHubRelease.tag_name -and -not $LatestGitHubRelease.draft) {
+        Write-Warning "Not deploying because release $env:ReleaseVersion is already published.";
+        Exit-AppveyorBuild;
       }
 
 deploy:
@@ -124,6 +123,6 @@ deploy:
     force_update: true         # replaces current release
     draft: true                # release as a draft
     auth_token: $(GH_TOKEN)
-    artifact: MedusaInstaller-$(ReleaseVersion).exe
+    artifact: MedusaInstaller  # artifact name
     on:
       branch: master           # release from master branch only
