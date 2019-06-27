@@ -30,10 +30,7 @@ before_build:
         % { $($_.matches.groups[1]).Value };
 
   - ps: |
-      If (
-        $env:InstallerVersion -ne $env:SeedVersion
-        -and $env:APPVEYOR_REPO_BRANCH -eq "master"
-      ) {
+      If ($env:InstallerVersion -ne $env:SeedVersion -and $env:APPVEYOR_REPO_BRANCH -eq "master") {
         $message = "Seed version differs from version in source code!";
         $details = `
           "`tVersion in source code: $env:InstallerVersion`n" +
@@ -92,8 +89,7 @@ environment:
 
 before_deploy:
   - ps: |
-      If ($env:InstallerVersion -ne $env:SeedVersion)
-      {
+      If ($env:InstallerVersion -ne $env:SeedVersion) {
         $message = "Seed version differs from version in source code!";
         $details = `
           "`tVersion in source code: $env:InstallerVersion`n" +
@@ -115,10 +111,7 @@ before_deploy:
         -Uri "https://api.github.com/repos/$env:APPVEYOR_REPO_NAME/releases/latest" `
         -Headers $headers `
         -Method GET;
-      If (
-        $env:ReleaseVersion -eq $LatestGitHubRelease.tag_name
-        -and -not $LatestGitHubRelease.draft
-      ) {
+      If ($env:ReleaseVersion -eq $LatestGitHubRelease.tag_name -and -not $LatestGitHubRelease.draft) {
         Write-Warning "Not deploying because release $env:ReleaseVersion is already published.";
         Exit-AppveyorBuild;
       }
