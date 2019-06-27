@@ -53,8 +53,15 @@ before_build:
         % { $($_.matches.groups[1]).Value };
 
 build_script:
-  # Set output file to: "Output\MedusaInstaller-[commit_hash[:7]].exe"
-  - ps: $env:OutputFile = "MedusaInstaller-" + $env:APPVEYOR_REPO_COMMIT.Substring(0, 7);
+  # On pull requests, set output file to: "Output\MedusaInstaller-[commit_hash[:7]].exe"
+  # On other commits, set output file to: "Output\MedusaInstaller-[release_version].exe"
+  - ps: |-
+      If ($env:APPVEYOR_PULL_REQUEST_NUMBER) { `
+        $FileVersion = $env:APPVEYOR_REPO_COMMIT.Substring(0, 7); `
+      } Else { `
+        $FileVersion = $env:ReleaseVersion; `
+      } `
+      $env:OutputFile = "MedusaInstaller-$FileVersion";
   - ps: '& "${env:ProgramFiles(x86)}\Inno Setup 6\iscc.exe" /O"Output" /F"$env:OutputFile" /Q Medusa.iss;'
   - ps: $env:InstallerFile = "Output\${env:OutputFile}.exe";
 
@@ -78,7 +85,7 @@ notifications:
 
 artifacts:
   - path: $(InstallerFile)
-    name: MedusaInstaller-$(ReleaseVersion).exe
+    name: MedusaInstaller
 
 environment:
   GH_TOKEN:
@@ -124,6 +131,6 @@ deploy:
     force_update: true         # replaces current release
     draft: true                # release as a draft
     auth_token: $(GH_TOKEN)
-    artifact: MedusaInstaller-$(ReleaseVersion).exe
+    artifact: MedusaInstaller  # artifact name
     on:
       branch: master           # release from master branch only
